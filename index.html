@@ -416,7 +416,15 @@
             data: { labels, datasets },
             options: {
                 responsive: true,
-                maintainAspectRatio: false,
+                maintainAspectRatio: false, // 確保圖表不會被固定長寬比限制
+                layout: {
+                    padding: {
+                        left: 10,
+                        right: 20,
+                        top: 20,
+                        bottom: 10
+                    }
+                },
                 plugins: {
                     legend: {
                         position: 'bottom',
@@ -461,7 +469,7 @@
                     y: {
                         grid: { 
                             color: 'var(--border)',
-                            zeroLineColor: 'rgba(255,255,255,.5)' 
+                            zeroLineColor: 'var(--muted)' 
                         },
                         ticks: { 
                             color: 'var(--muted)',
@@ -470,8 +478,8 @@
                             }
                         },
                         title: { display: true, text: '防治率 (%)', color: 'var(--text)' },
-                        suggestedMin: -10, // 增加底部緩衝
-                        suggestedMax: 110 // 增加頂部緩衝
+                        suggestedMin: -10,
+                        suggestedMax: 110
                     }
                 }
             }
