@@ -16,7 +16,6 @@
       --ghost-color: var(--text);
       --ghost-border: var(--border);
       --ghost-hover-border: #334155;
-      /* Font sizes for bigger text */
       --font-size-base: 16px;
       --font-size-sm: 14px;
       --font-size-xs: 12px;
@@ -52,13 +51,15 @@
     label { font-size: var(--font-size-sm); color: var(--muted); }
     input { background: var(--panel-2); color: var(--text); border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; width: 120px; font-size: var(--font-size-sm); }
     input::-webkit-outer-spin-button,input::-webkit-inner-spin-button{ -webkit-appearance:none; margin:0; }
+    
+    .button-group { display: flex; gap: 12px; flex-wrap: wrap; }
 
     button { background: #1f2937; border: 1px solid var(--border); color: var(--text); padding: 12px 16px; border-radius: 12px; cursor: pointer; transition: .15s ease; font-size: var(--font-size-sm); }
     button:hover { transform: translateY(-1px); border-color: #334155; }
     button.primary { background: var(--accent); color: #06290f; border-color: #16a34a; font-weight: 600; }
     button.ghost { background: transparent; color: var(--ghost-color); border-color: var(--ghost-border); }
     button.ghost:hover { border-color: var(--ghost-hover-border); }
-    button.ghost:active { transform: translateY(0); } /* Added for better UI feel */
+    button.ghost:active { transform: translateY(0); }
 
     table { width: 100%; border-collapse: collapse; font-size: var(--font-size-sm); }
     th, td { border: 1px solid var(--border); padding: 8px 10px; text-align: center; }
@@ -114,17 +115,21 @@
           <label>時間點前綴</label><br>
           <input id="tpPrefix" type="text" placeholder="例：月">
         </div>
-        <div class="row" style="margin-left:auto; justify-content: flex-end;">
+      </div>
+      <div class="row" style="margin-top: 20px; justify-content: flex-start;">
+        <div class="button-group">
           <button id="btnBuild" class="primary">產生輸入表格</button>
           <button id="btnDemo" class="ghost">填入示範資料</button>
           <button id="btnCalc" class="primary">計算防治率 & 繪圖</button>
+        </div>
+        <div class="button-group">
           <button id="btnImport" class="ghost">匯入 CSV</button>
           <button id="btnCSV" class="ghost">匯出 CSV</button>
           <button id="btnPNG" class="ghost">下載圖表 PNG</button>
           <input type="file" id="fileInput" accept=".csv" style="display:none;">
         </div>
       </div>
-      <div id="treatmentNames" style="margin-top:16px"></div>
+      <div id="treatmentNames" style="margin-top:20px"></div>
       <p class="note" style="font-size:var(--font-size-base)">轉換：<code>(X + 0.5)<sup>1/2</sup></code>；防治率（%）＝ <code>(1 − 平均處理區(轉換後) / 平均對照區(轉換後)) × 100</code>。若對照平均為 0（轉換後）則該時間點無法計算，會以 <code>—</code> 顯示並在圖上略過。</p>
     </section>
 
@@ -157,17 +162,15 @@
   <script>
     // ====== 公用函式 ======
     const $ = (sel) => document.querySelector(sel);
-    const trans = (x) => Math.sqrt((Number(x) || 0) + 0.5); // (X+0.5)^{1/2}
+    const trans = (x) => Math.sqrt((Number(x) || 0) + 0.5);
     const round2 = (v) => (isFinite(v) ? Math.round(v * 100) / 100 : v);
     const round1 = (v) => (isFinite(v) ? Math.round(v * 10) / 10 : v);
 
-    // 色板（最多 12 組處理）
     function colorFor(i) {
         const colors = ['#22c55e', '#ef4444', '#3b82f6', '#f97316', '#a855f7', '#14b8a6', '#f59e0b', '#d946ef', '#6366f1', '#ec4899', '#84cc16', '#6b7280'];
         return colors[i % colors.length];
     }
     
-    // ====== 動態建立輸入表格與處理組名稱 ======
     function buildInputs() {
         buildTreatmentNames();
         buildTable();
@@ -223,14 +226,13 @@
         setupTableNavigation();
     }
 
-    // ====== 鍵盤導航功能 ======
     function setupTableNavigation() {
         const inputs = $('#tableHost').querySelectorAll('input');
         inputs.forEach((input, index) => {
             input.addEventListener('keydown', (e) => {
                 const T = parseInt($('#treatments').value) || 1;
                 const R = parseInt($('#replicates').value) || 1;
-                const cols = (T * R) + R; // 總輸入欄位數
+                const cols = (T * R) + R;
                 const col = (index % cols);
 
                 let nextIndex = index;
@@ -252,7 +254,6 @@
         });
     }
 
-    // ====== 讀取輸入、計算、防治率表 ======
     function compute() {
         const T = parseInt($('#treatments').value) || 1;
         const R = parseInt($('#replicates').value) || 1;
@@ -261,7 +262,6 @@
         const names = getTreatmentNames();
         const labels = Array.from({ length: N }, (_, i) => prefix ? `${i + 1}${prefix}` : `${i + 1}`);
 
-        // 轉換後的數據與統計
         const ctrlDataTransformed = Array.from({ length: N }, () => []);
         const trDataTransformed = Array.from({ length: T }, () => Array.from({ length: N }, () => []));
 
@@ -277,7 +277,6 @@
             }
         }
 
-        // 計算各種統計數據
         const stats = {
             ctrlAvg: [],
             ctrlSd: [],
@@ -301,12 +300,10 @@
                 stats.trSd[t][i] = trData.length > 1 ? ss.standardDeviation(trData) : NaN;
                 stats.trCv[t][i] = stats.trSd[t][i] / stats.trAvg[t][i] * 100;
 
-                // 計算防治率
                 const c = stats.ctrlAvg[i];
                 const a = stats.trAvg[t][i];
                 stats.eff[t][i] = (isFinite(c) && c > 0) ? round2((1 - a / c) * 100) : null;
 
-                // 顯著性檢定 (t-test)
                 stats.isSignificant[t][i] = false;
                 if (ctrlData.length >= 2 && trData.length >= 2) {
                     try {
@@ -321,7 +318,6 @@
             }
         }
         
-        // 結果表
         let html = '<div class="note" style="margin-bottom:8px">顯示的是以 <b>(X+0.5)½</b> 轉換後之統計數據與防治率（%）。</div>';
         html += '<table><thead><tr><th rowspan="2">時間點</th><th colspan="3" class="stats-header">對照組 (轉換後)</th>';
         for (let t = 0; t < T; t++) html += `<th colspan="2" class="stats-header">${names[t]} (轉換後)</th>`;
@@ -343,7 +339,6 @@
         html += '</tbody></table>';
         $('#resultHost').innerHTML = html;
 
-        // 繪圖
         const datasets = [];
         for (let t = 0; t < T; t++) {
             datasets.push({
@@ -363,7 +358,6 @@
         window.__calcCache = { labels, ctrlAvg: stats.ctrlAvg, eff: stats.eff, datasets, stats };
     }
 
-    // ====== 匯出 CSV ======
     function exportCSV() {
         const cache = window.__calcCache;
         if (!cache) { alert('請先計算再匯出。'); return; }
@@ -390,7 +384,7 @@
         a.click();
         URL.revokeObjectURL(a.href);
     }
-    // ====== 根據 CSV 格式匯入 ======
+    
     function importCSV(e) {
         const file = e.target.files[0];
         if (!file) return;
@@ -442,7 +436,6 @@
         reader.readAsText(file, 'UTF-8');
     }
 
-    // ====== 下載 PNG ======
     function downloadPNG() {
         if (!chart) {
             alert('請先計算並繪製圖表！');
@@ -545,7 +538,6 @@
         });
     }
 
-    // ====== 示範資料（產生可視化趨勢） ======
     function fillDemo() {
         if (!$('#tableHost').querySelector('table')) buildInputs();
         const T = parseInt($('#treatments').value) || 1;
@@ -565,7 +557,6 @@
         compute();
     }
 
-    // ====== 事件繫結 ======
     window.addEventListener('DOMContentLoaded', () => {
         $('#btnBuild').addEventListener('click', buildInputs);
         $('#btnDemo').addEventListener('click', fillDemo);
