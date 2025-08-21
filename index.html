@@ -13,6 +13,8 @@
       --muted: #9ca3af; /* gray-400 */
       --accent: #22c55e; /* green-500 */
       --border: #1f2937; /* gray-800 */
+      --chart-grid: #1f2937; /* For dark mode, slightly brighter than background */
+      --chart-text: #e5e7eb; /* For dark mode, bright text */
       /* Ghost button colors for dark mode */
       --ghost-color: var(--text);
       --ghost-border: var(--border);
@@ -26,6 +28,8 @@
       --muted: #6b7280;
       --accent: #16a34a;
       --border: #e2e8f0;
+      --chart-grid: #e2e8f0; /* For light mode */
+      --chart-text: #1f2937; /* For light mode */
       /* Ghost button colors for light mode */
       --ghost-color: var(--muted);
       --ghost-border: #cbd5e1;
@@ -411,7 +415,10 @@
     function drawChart(labels, datasets) {
         clearChart();
         const ctx = $('#chartCanvas').getContext('2d');
-        const theme = $('body').classList.contains('light-mode') ? 'light' : 'dark';
+        const rootStyles = getComputedStyle(document.documentElement);
+        const chartGridColor = rootStyles.getPropertyValue('--chart-grid').trim();
+        const chartTextColor = rootStyles.getPropertyValue('--chart-text').trim();
+
         chart = new Chart(ctx, {
             type: 'line',
             data: { labels, datasets },
@@ -431,7 +438,7 @@
                         position: 'bottom',
                         labels: { 
                             boxWidth: 15,
-                            color: 'var(--muted)',
+                            color: chartTextColor,
                             font: { size: 12 }
                         }
                     },
@@ -461,24 +468,24 @@
                 scales: {
                     x: {
                         grid: { 
-                            color: 'var(--border)',
+                            color: chartGridColor,
                             drawTicks: false
                         },
-                        ticks: { color: 'var(--muted)' },
-                        title: { display: true, text: '時間點', color: 'var(--text)' }
+                        ticks: { color: chartTextColor },
+                        title: { display: true, text: '時間點', color: chartTextColor }
                     },
                     y: {
                         grid: { 
-                            color: 'var(--border)',
-                            zeroLineColor: 'var(--muted)' 
+                            color: chartGridColor,
+                            zeroLineColor: chartGridColor 
                         },
                         ticks: { 
-                            color: 'var(--muted)',
+                            color: chartTextColor,
                             callback: function(value) {
                                 return value + '%';
                             }
                         },
-                        title: { display: true, text: '防治率 (%)', color: 'var(--text)' },
+                        title: { display: true, text: '防治率 (%)', color: chartTextColor },
                         suggestedMin: -10,
                         suggestedMax: 110
                     }
@@ -523,18 +530,21 @@
             document.body.classList.toggle('light-mode');
             localStorage.setItem('theme', document.body.classList.contains('light-mode') ? 'light' : 'dark');
             if (chart) {
-                // Manually redraw chart to apply new colors
+                const rootStyles = getComputedStyle(document.documentElement);
+                const chartGridColor = rootStyles.getPropertyValue('--chart-grid').trim();
+                const chartTextColor = rootStyles.getPropertyValue('--chart-text').trim();
+
                 chart.data.datasets.forEach((dataset, i) => {
                     dataset.borderColor = colorFor(i);
                     dataset.pointBackgroundColor = colorFor(i);
                 });
-                chart.options.scales.x.grid.color = 'var(--border)';
-                chart.options.scales.x.ticks.color = 'var(--muted)';
-                chart.options.scales.x.title.color = 'var(--text)';
-                chart.options.scales.y.grid.color = 'var(--border)';
-                chart.options.scales.y.ticks.color = 'var(--muted)';
-                chart.options.scales.y.title.color = 'var(--text)';
-                chart.options.plugins.legend.labels.color = 'var(--muted)';
+                chart.options.scales.x.grid.color = chartGridColor;
+                chart.options.scales.x.ticks.color = chartTextColor;
+                chart.options.scales.x.title.color = chartTextColor;
+                chart.options.scales.y.grid.color = chartGridColor;
+                chart.options.scales.y.ticks.color = chartTextColor;
+                chart.options.scales.y.title.color = chartTextColor;
+                chart.options.plugins.legend.labels.color = chartTextColor;
                 chart.update();
             }
         });
