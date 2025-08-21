@@ -153,9 +153,8 @@
     // 色板（最多 12 組處理）
     function colorFor(i) {
         const colors = ['#22c55e', '#ef4444', '#3b82f6', '#f97316', '#a855f7', '#14b8a6', '#f59e0b', '#d946ef', '#6366f1', '#ec4899', '#84cc16', '#6b7280'];
-        const lightColors = ['#22c55e', '#ef4444', '#3b82f6', '#f97316', '#a855f7', '#14b8a6', '#f59e0b', '#d946ef', '#6366f1', '#ec4899', '#84cc16', '#6b7280'];
         const theme = $('body').classList.contains('light-mode') ? 'light' : 'dark';
-        if (theme === 'light') return lightColors[i % lightColors.length];
+        if (theme === 'light') return colors[i % colors.length];
         return colors[i % colors.length];
     }
     
