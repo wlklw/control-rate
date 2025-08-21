@@ -399,6 +399,10 @@
 
     // ====== 下載 PNG ======
     function downloadPNG() {
+        if (!chart) {
+            alert('請先計算並繪製圖表！');
+            return;
+        }
         const a = document.createElement('a');
         a.href = chart.toBase64Image();
         a.download = 'efficacy-chart.png';
