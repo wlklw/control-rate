@@ -13,8 +13,6 @@
       --muted: #9ca3af; /* gray-400 */
       --accent: #22c55e; /* green-500 */
       --border: #1f2937; /* gray-800 */
-      --chart-grid: #374151; /* For dark mode, slightly brighter gray */
-      --chart-text: #F3F4F6; /* For dark mode, light gray */
       /* Ghost button colors for dark mode */
       --ghost-color: var(--text);
       --ghost-border: var(--border);
@@ -28,8 +26,6 @@
       --muted: #6b7280;
       --accent: #16a34a;
       --border: #e2e8f0;
-      --chart-grid: #E5E7EB; /* For light mode */
-      --chart-text: #1F2937; /* For light mode, dark text */
       /* Ghost button colors for light mode */
       --ghost-color: var(--muted);
       --ghost-border: #cbd5e1;
@@ -155,20 +151,7 @@
         const colors = ['#22c55e', '#ef4444', '#3b82f6', '#f97316', '#a855f7', '#14b8a6', '#f59e0b', '#d946ef', '#6366f1', '#ec4899', '#84cc16', '#6b7280'];
         return colors[i % colors.length];
     }
-
-    // 獲取圖表顏色變數
-    function getChartColors() {
-        const rootStyles = getComputedStyle(document.documentElement);
-        return {
-            grid: rootStyles.getPropertyValue('--chart-grid').trim(),
-            text: rootStyles.getPropertyValue('--chart-text').trim(),
-            tooltipBg: rootStyles.getPropertyValue('--panel-2').trim(),
-            tooltipTitle: rootStyles.getPropertyValue('--text').trim(),
-            tooltipBody: rootStyles.getPropertyValue('--muted').trim(),
-            tooltipBorder: rootStyles.getPropertyValue('--border').trim()
-        };
-    }
-
+    
     // ====== 動態建立輸入表格與處理組名稱 ======
     function buildInputs() {
         buildTreatmentNames();
@@ -319,7 +302,7 @@
                 pointHoverBorderWidth: 2
             });
         }
-        drawChart(labels, datasets, getChartColors());
+        drawChart(labels, datasets);
 
         // 給 CSV / 下載用暫存
         window.__calcCache = { labels, ctrlAvg, eff, datasets };
@@ -414,9 +397,19 @@
         }
     }
 
-    function drawChart(labels, datasets, colors) {
+    function drawChart(labels, datasets) {
         clearChart();
         const ctx = $('#chartCanvas').getContext('2d');
+        
+        // 直接在 JavaScript 中判斷並設定顏色
+        const isLightMode = document.body.classList.contains('light-mode');
+        const gridColor = isLightMode ? '#E5E7EB' : '#374151';
+        const textColor = isLightMode ? '#1F2937' : '#F3F4F6';
+        const tooltipBg = isLightMode ? '#f1f5f9' : '#0b1220';
+        const tooltipTitle = isLightMode ? '#1f2937' : '#e5e7eb';
+        const tooltipBody = isLightMode ? '#6b7280' : '#9ca3af';
+        const tooltipBorder = isLightMode ? '#e2e8f0' : '#1f2937';
+
         chart = new Chart(ctx, {
             type: 'line',
             data: { labels, datasets },
@@ -431,17 +424,17 @@
                         position: 'bottom',
                         labels: { 
                             boxWidth: 15,
-                            color: colors.text,
+                            color: textColor,
                             font: { size: 12 }
                         }
                     },
                     tooltip: {
                         mode: 'index',
                         intersect: false,
-                        backgroundColor: colors.tooltipBg,
-                        titleColor: colors.tooltipTitle,
-                        bodyColor: colors.tooltipBody,
-                        borderColor: colors.tooltipBorder,
+                        backgroundColor: tooltipBg,
+                        titleColor: tooltipTitle,
+                        bodyColor: tooltipBody,
+                        borderColor: tooltipBorder,
                         borderWidth: 1,
                         padding: 10,
                         callbacks: {
@@ -457,22 +450,22 @@
                 scales: {
                     x: {
                         grid: { 
-                            color: colors.grid,
+                            color: gridColor,
                             drawTicks: false
                         },
-                        ticks: { color: colors.text },
-                        title: { display: true, text: '時間點', color: colors.text }
+                        ticks: { color: textColor },
+                        title: { display: true, text: '時間點', color: textColor }
                     },
                     y: {
                         grid: { 
-                            color: colors.grid,
-                            zeroLineColor: colors.grid 
+                            color: gridColor,
+                            zeroLineColor: gridColor 
                         },
                         ticks: { 
-                            color: colors.text,
+                            color: textColor,
                             callback: function(value) { return value + '%'; }
                         },
-                        title: { display: true, text: '防治率 (%)', color: colors.text },
+                        title: { display: true, text: '防治率 (%)', color: textColor },
                         suggestedMin: -10,
                         suggestedMax: 110
                     }
@@ -516,7 +509,7 @@
             document.body.classList.toggle('light-mode');
             localStorage.setItem('theme', document.body.classList.contains('light-mode') ? 'light' : 'dark');
             if (window.__calcCache) {
-                drawChart(window.__calcCache.labels, window.__calcCache.datasets, getChartColors());
+                drawChart(window.__calcCache.labels, window.__calcCache.datasets);
             }
         });
 
