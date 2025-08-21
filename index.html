@@ -66,7 +66,8 @@
     body.light-mode .treatment-group { background: #eff6ff; }
     .treatment-group:nth-child(even) { background: #16202f; }
     body.light-mode .treatment-group:nth-child(even) { background: #e2e8f0; }
-
+    .stats-header { background: #0c1a2c; font-size: 11px; color: #a4b2c8; white-space: nowrap; }
+    body.light-mode .stats-header { background: #dde2ec; color: #6b7280; }
     .muted { color: var(--muted); }
     .note { font-size: 12px; color: var(--muted); margin-top: 6px; }
     .badge { font-size: 12px; color: #0b1324; background: #86efac; padding: 2px 8px; border-radius: 999px; margin-left: 8px; }
@@ -82,6 +83,7 @@
     .sticky-actions { position: sticky; bottom: 0; background: rgba(11,18,32,.9); backdrop-filter: blur(6px); padding: 10px; display:flex; gap:8px; border:1px solid var(--border); border-radius:12px; }
   </style>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/simple-statistics@7.8.3/dist/simple-statistics.min.js"></script>
 </head>
 <body class="light-mode">
   <header>
@@ -129,6 +131,7 @@
     <section class="card">
       <h3 style="margin:0 0 8px">計算結果</h3>
       <div id="resultHost" class="scroll-x"></div>
+      <p class="note" style="margin-top: 12px; font-size:11px">結果表格中，防治率後的 **\*** 號表示該處理組與對照組在該時間點，以 t-test 檢定具有顯著差異 (p-value &lt; 0.05)。</p>
     </section>
 
     <section class="card">
@@ -143,8 +146,8 @@
     // ====== 公用函式 ======
     const $ = (sel) => document.querySelector(sel);
     const trans = (x) => Math.sqrt((Number(x) || 0) + 0.5); // (X+0.5)^{1/2}
-    const mean = (arr) => arr.length ? arr.reduce((a, b) => a + b, 0) / arr.length : NaN;
     const round2 = (v) => (isFinite(v) ? Math.round(v * 100) / 100 : v);
+    const round1 = (v) => (isFinite(v) ? Math.round(v * 10) / 10 : v);
 
     // 色板（最多 12 組處理）
     function colorFor(i) {
@@ -244,43 +247,86 @@
         const N = parseInt($('#timepoints').value) || 1;
         const prefix = ($('#tpPrefix').value || '').trim();
         const names = getTreatmentNames();
-
         const labels = Array.from({ length: N }, (_, i) => prefix ? `${i + 1}${prefix}` : `${i + 1}`);
 
-        // 轉換後的平均（對照、處理）
-        const ctrlAvg = new Array(N).fill(NaN);
-        const trAvg = Array.from({ length: T }, () => new Array(N).fill(NaN));
+        // 轉換後的數據與統計
+        const ctrlDataTransformed = Array.from({ length: N }, () => []);
+        const trDataTransformed = Array.from({ length: T }, () => Array.from({ length: N }, () => []));
 
         for (let i = 1; i <= N; i++) {
-            const ctrlVals = [];
-            for (let r = 1; r <= R; r++) ctrlVals.push(trans($('#ctrl_' + i + '_' + r)?.value));
-            ctrlAvg[i - 1] = mean(ctrlVals);
-            for (let t = 1; t <= T; t++) {
-                const vals = [];
-                for (let r = 1; r <= R; r++) vals.push(trans($('#t' + t + '_' + i + '_' + r)?.value));
-                trAvg[t - 1][i - 1] = mean(vals);
+            for (let r = 1; r <= R; r++) {
+                const ctrlVal = trans($('#ctrl_' + i + '_' + r)?.value);
+                if(isFinite(ctrlVal)) ctrlDataTransformed[i - 1].push(ctrlVal);
+                
+                for (let t = 1; t <= T; t++) {
+                    const trVal = trans($('#t' + t + '_' + i + '_' + r)?.value);
+                    if(isFinite(trVal)) trDataTransformed[t - 1][i - 1].push(trVal);
+                }
             }
         }
 
-        // 防治率
-        const eff = Array.from({ length: T }, () => new Array(N).fill(null));
-        for (let t = 0; t < T; t++) {
-            for (let i = 0; i < N; i++) {
-                const c = ctrlAvg[i];
-                const a = trAvg[t][i];
-                if (!isFinite(c) || c <= 0) { eff[t][i] = null; continue; }
-                eff[t][i] = round2((1 - a / c) * 100);
-            }
-        }
-
-        // 結果表
-        let html = '<div class="note" style="margin-bottom:6px">顯示的是以 <b>(X+0.5)½</b> 轉換後取平均，再代入公式所得之防治率（%）。</div>';
-        html += '<table><thead><tr><th>時間點</th><th>對照平均(轉換後)</th>';
-        for (let t = 0; t < T; t++) html += `<th>${names[t]} 防治率(%)</th>`;
-        html += '</tr></thead><tbody>';
+        // 計算各種統計數據
+        const stats = {
+            ctrlAvg: [],
+            ctrlSd: [],
+            ctrlCv: [],
+            trAvg: Array.from({ length: T }, () => []),
+            trSd: Array.from({ length: T }, () => []),
+            trCv: Array.from({ length: T }, () => []),
+            eff: Array.from({ length: T }, () => []),
+            isSignificant: Array.from({ length: T }, () => [])
+        };
+        
         for (let i = 0; i < N; i++) {
-            html += `<tr><td>${labels[i]}</td><td>${isFinite(ctrlAvg[i]) ? round2(ctrlAvg[i]) : '—'}</td>`;
-            for (let t = 0; t < T; t++) html += `<td>${eff[t][i] === null ? '—' : eff[t][i]}</td>`;
+            const ctrlData = ctrlDataTransformed[i];
+            stats.ctrlAvg[i] = ss.mean(ctrlData);
+            stats.ctrlSd[i] = ss.standardDeviation(ctrlData);
+            stats.ctrlCv[i] = stats.ctrlSd[i] / stats.ctrlAvg[i] * 100;
+            
+            for (let t = 0; t < T; t++) {
+                const trData = trDataTransformed[t][i];
+                stats.trAvg[t][i] = ss.mean(trData);
+                stats.trSd[t][i] = ss.standardDeviation(trData);
+                stats.trCv[t][i] = stats.trSd[t][i] / stats.trAvg[t][i] * 100;
+
+                // 計算防治率
+                const c = stats.ctrlAvg[i];
+                const a = stats.trAvg[t][i];
+                stats.eff[t][i] = (isFinite(c) && c > 0) ? round2((1 - a / c) * 100) : null;
+
+                // 顯著性檢定 (t-test)
+                stats.isSignificant[t][i] = false;
+                if (ctrlData.length > 1 && trData.length > 1) {
+                    try {
+                        const tTestResult = ss.tTestTwoSample(ctrlData, trData);
+                        if (tTestResult.pValue < 0.05) {
+                            stats.isSignificant[t][i] = true;
+                        }
+                    } catch (e) {
+                        // 如果數據太少或有問題，t-test 會報錯，忽略即可
+                        console.warn('t-test failed for data points:', ctrlData, trData);
+                    }
+                }
+            }
+        }
+        
+        // 結果表
+        let html = '<div class="note" style="margin-bottom:6px">顯示的是以 <b>(X+0.5)½</b> 轉換後之統計數據與防治率（%）。</div>';
+        html += '<table><thead><tr><th rowspan="2">時間點</th><th colspan="3" class="stats-header">對照組 (轉換後)</th>';
+        for (let t = 0; t < T; t++) html += `<th colspan="2" class="stats-header">${names[t]} (轉換後)</th>`;
+        html += '</tr><tr>';
+        html += '<th class="stats-header">平均值</th><th class="stats-header">標準差</th><th class="stats-header">變異係數(%)</th>';
+        for (let t = 0; t < T; t++) html += '<th class="stats-header">防治率(%)</th><th class="stats-header">變異係數(%)</th>';
+        html += '</tr></thead><tbody>';
+        
+        for (let i = 0; i < N; i++) {
+            html += `<tr><td>${labels[i]}</td>`;
+            html += `<td>${round2(stats.ctrlAvg[i])}</td><td>${round2(stats.ctrlSd[i])}</td><td>${round1(stats.ctrlCv[i])}</td>`;
+            for (let t = 0; t < T; t++) {
+                const effText = (stats.eff[t][i] === null ? '—' : stats.eff[t][i]);
+                const significantMark = (stats.isSignificant[t][i] ? '<span style="color:var(--accent);font-weight:bold">*</span>' : '');
+                html += `<td>${effText}${significantMark}</td><td>${round1(stats.trCv[t][i])}</td>`;
+            }
             html += '</tr>';
         }
         html += '</tbody></table>';
@@ -291,32 +337,37 @@
         for (let t = 0; t < T; t++) {
             datasets.push({
                 label: names[t],
-                data: eff[t],
+                data: stats.eff[t],
                 borderColor: colorFor(t),
-                backgroundColor: 'rgba(0,0,0,0)', // 透明背景
-                tension: 0, // 更平滑的線條
-                pointRadius: 5, // 更大的資料點
-                pointBorderWidth: 2, // 資料點邊框
+                backgroundColor: 'rgba(0,0,0,0)',
+                tension: 0, 
+                pointRadius: 5,
+                pointBorderWidth: 2,
                 pointBackgroundColor: colorFor(t),
-                pointHoverRadius: 7, // 滑鼠懸停時更大的資料點
+                pointHoverRadius: 7,
                 pointHoverBorderWidth: 2
             });
         }
         drawChart(labels, datasets);
-
-        // 給 CSV / 下載用暫存
-        window.__calcCache = { labels, ctrlAvg, eff, datasets };
+        window.__calcCache = { labels, ctrlAvg: stats.ctrlAvg, eff: stats.eff, datasets };
     }
 
     // ====== 匯出 CSV ======
     function exportCSV() {
         const cache = window.__calcCache;
         if (!cache) { alert('請先計算再匯出。'); return; }
-        const { labels, ctrlAvg, datasets } = cache;
-        const header = ['時間點', '對照平均(轉換後)', ...datasets.map(s => s.label + ' 防治率(%)')];
+        const { labels, ctrlAvg, eff, datasets } = cache;
+        const header = ['時間點', '對照平均(轉換後)'];
+        for (let t = 0; t < datasets.length; t++) {
+            header.push(`${datasets[t].label} 防治率(%)`);
+        }
         const rows = [header];
         for (let i = 0; i < labels.length; i++) {
-            rows.push([labels[i], round2(ctrlAvg[i])].concat(datasets.map(s => s.data[i] ?? '')));
+            const row = [labels[i], round2(ctrlAvg[i])];
+            for (let t = 0; t < datasets.length; t++) {
+                row.push(eff[t][i] ?? '');
+            }
+            rows.push(row);
         }
         const csv = rows.map(r => r.join(',')).join('\n');
         const blob = new Blob(["\uFEFF" + csv], { type: 'text/csv;charset=utf-8;' });
@@ -326,7 +377,6 @@
         a.click();
         URL.revokeObjectURL(a.href);
     }
-
     // ====== 根據 CSV 格式匯入 ======
     function importCSV(e) {
         const file = e.target.files[0];
@@ -412,7 +462,7 @@
 
         chart = new Chart(ctx, {
             type: 'line',
-            data: { labels, datasets },
+            data: { datasets },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
@@ -449,6 +499,7 @@
                 },
                 scales: {
                     x: {
+                        labels: labels,
                         grid: { 
                             color: gridColor,
                             drawTicks: false
