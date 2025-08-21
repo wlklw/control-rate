@@ -39,6 +39,8 @@
     table { width: 100%; border-collapse: collapse; font-size: 13px; }
     th, td { border: 1px solid var(--border); padding: 6px 8px; text-align: center; }
     th { background: #0b1324; position: sticky; top: 0; z-index: 1; }
+    .treatment-group { background: #1c273a; }
+    .treatment-group:nth-child(even) { background: #16202f; }
 
     .muted { color: var(--muted); }
     .note { font-size: 12px; color: var(--muted); margin-top: 6px; }
@@ -84,6 +86,7 @@
           <button id="btnPNG" class="ghost">下載圖表 PNG</button>
         </div>
       </div>
+      <div id="treatmentNames" style="margin-top:12px"></div>
       <p class="note">轉換：<code>(X + 0.5)<sup>1/2</sup></code>；防治率（%）＝ <code>(1 − 平均處理區(轉換後) / 平均對照區(轉換後)) × 100</code>。若對照平均為 0（轉換後）則該時間點無法計算，會以 <code>—</code> 顯示並在圖上略過。</p>
     </section>
 
@@ -96,13 +99,12 @@
       <h3 style="margin:0 0 8px">計算結果</h3>
       <div id="resultHost" class="scroll-x"></div>
     </section>
-    
+
     <section class="card">
       <h3 style="margin:0 0 8px">年度防治率折線圖</h3>
       <canvas id="chartCanvas" width="900" height="420"></canvas>
       <div id="legend" class="legend"></div>
     </section>
-
   </main>
 
   <script>
@@ -119,26 +121,53 @@
       return `hsl(${hue} 70% 55%)`;
     }
 
-    // ====== 動態建立輸入表格 ======
+    // ====== 動態建立輸入表格與處理組名稱 ======
+    function buildInputs(){
+        buildTreatmentNames();
+        buildTable();
+    }
+
+    function buildTreatmentNames(){
+        const T = parseInt($('#treatments').value)||1;
+        const host = $('#treatmentNames');
+        let html = '<div class="row" style="gap:16px"><p style="font-size:13px;color:var(--muted);margin:0;align-self:flex-end;white-space:nowrap">處理組名稱：</p>';
+        for(let t=1;t<=T;t++){
+            html += `<div><label>處理${t}</label><br><input type="text" id="tName_${t}" value="處理${t}" style="width:100px"/></div>`;
+        }
+        html += '</div>';
+        host.innerHTML = html;
+    }
+
+    function getTreatmentNames(){
+        const T = parseInt($('#treatments').value)||1;
+        const names = [];
+        for(let t=1;t<=T;t++){
+            names.push($(`#tName_${t}`).value || `處理${t}`);
+        }
+        return names;
+    }
+
     function buildTable(){
       const T = parseInt($('#treatments').value)||1;
       const R = parseInt($('#replicates').value)||1;
       const N = parseInt($('#timepoints').value)||1;
       const prefix = ($('#tpPrefix').value || '').trim();
+      const names = getTreatmentNames();
 
       let html = '<div class="note" style="margin-bottom:6px">每個時間點皆需填入 <b>對照</b>與<b>各處理</b>的<b>重複</b>蟲數（未轉換原始值）。</div>';
       html += '<table><thead><tr><th>時間點</th>';
-      for(let r=1;r<=R;r++) html += `<th>對照-重複${r}</th>`;
-      for(let t=1;t<=T;t++){
-        for(let r=1;r<=R;r++) html += `<th>處理${t}-重複${r}</th>`;
+      for(let r=1;r<=R;r++) html += `<th class="control-group">對照-重複${r}</th>`;
+      for(let t=0;t<T;t++){
+        for(let r=1;r<=R;r++) html += `<th class="treatment-group t-${t}"><span>${names[t]}</span>-重複${r}</th>`;
       }
       html += '</tr></thead><tbody>';
       for(let i=1;i<=N;i++){
         const label = prefix? `${i}${prefix}` : `${i}`;
-        html += `<tr><td>${label}</td>`;
-        for(let r=1;r<=R;r++) html += `<td><input type="number" step="any" id="ctrl_${i}_${r}" value="0"/></td>`;
+        html += `<tr data-row="${i}"><td>${label}</td>`;
+        for(let r=1;r<=R;r++) html += `<td class="control-group"><input type="text" id="ctrl_${i}_${r}" placeholder=""/></td>`;
         for(let t=1;t<=T;t++){
-          for(let r=1;r<=R;r++) html += `<td><input type="number" step="any" id="t${t}_${i}_${r}" value="0"/></td>`;
+          const groupClass = (t % 2 === 0) ? 'treatment-group' : 'treatment-group even';
+          for(let r=1;r<=R;r++) html += `<td class="treatment-group t-${t-1}"><input type="text" id="t${t}_${i}_${r}" placeholder=""/></td>`;
         }
         html += '</tr>';
       }
@@ -146,6 +175,36 @@
       $('#tableHost').innerHTML = html;
       $('#resultHost').innerHTML = '';
       clearChart();
+
+      setupTableNavigation();
+    }
+
+    // ====== 鍵盤導航功能 ======
+    function setupTableNavigation(){
+      const inputs = $('#tableHost').querySelectorAll('input');
+      inputs.forEach((input, index) => {
+        input.addEventListener('keydown', (e) => {
+          const T = parseInt($('#treatments').value)||1;
+          const R = parseInt($('#replicates').value)||1;
+          const cols = (T * R) + R + 1; // 總欄位數（含時間點和對照）
+
+          let nextIndex = index;
+          if (e.key === 'ArrowRight' || e.key === 'Tab') {
+            e.preventDefault();
+            nextIndex = (index + 1) % inputs.length;
+          } else if (e.key === 'ArrowLeft') {
+            e.preventDefault();
+            nextIndex = (index - 1 + inputs.length) % inputs.length;
+          } else if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            nextIndex = (index + cols - 1) % inputs.length;
+          } else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            nextIndex = (index - cols + 1 + inputs.length) % inputs.length;
+          }
+          inputs[nextIndex].focus();
+        });
+      });
     }
 
     // ====== 讀取輸入、計算、防治率表 ======
@@ -154,6 +213,7 @@
       const R = parseInt($('#replicates').value)||1;
       const N = parseInt($('#timepoints').value)||1;
       const prefix = ($('#tpPrefix').value || '').trim();
+      const names = getTreatmentNames();
 
       const labels = Array.from({length:N}, (_,i)=> prefix? `${i+1}${prefix}` : `${i+1}`);
 
@@ -186,7 +246,7 @@
       // 結果表
       let html = '<div class="note" style="margin-bottom:6px">顯示的是以 <b>(X+0.5)½</b> 轉換後取平均，再代入公式所得之防治率（%）。</div>';
       html += '<table><thead><tr><th>時間點</th><th>對照平均(轉換後)</th>';
-      for(let t=1;t<=T;t++) html += `<th>處理${t} 防治率(%)</th>`;
+      for(let t=0;t<T;t++) html += `<th>${names[t]} 防治率(%)</th>`;
       html += '</tr></thead><tbody>';
       for(let i=0;i<N;i++){
         html += `<tr><td>${labels[i]}</td><td>${isFinite(ctrlAvg[i])? round2(ctrlAvg[i]) : '—'}</td>`;
@@ -198,7 +258,7 @@
 
       // 繪圖
       const series = [];
-      for(let t=0;t<T;t++) series.push({ name: `處理${t+1}`, data: eff[t] });
+      for(let t=0;t<T;t++) series.push({ name: names[t], data: eff[t] });
       drawChart(labels, series);
 
       // 給 CSV / 下載用暫存
@@ -332,7 +392,7 @@
     // ====== 示範資料（產生可視化趨勢） ======
     function fillDemo(){
       // 若尚未建立表格，就先建立
-      if(!$('#tableHost').querySelector('table')) buildTable();
+      if(!$('#tableHost').querySelector('table')) buildInputs();
       const T = parseInt($('#treatments').value)||1;
       const R = parseInt($('#replicates').value)||1;
       const N = parseInt($('#timepoints').value)||1;
@@ -352,14 +412,16 @@
 
     // ====== 事件繫結（避免 inline onclick 的全域汙染問題） ======
     window.addEventListener('DOMContentLoaded', () => {
-      $('#btnBuild').addEventListener('click', buildTable);
+      $('#btnBuild').addEventListener('click', buildInputs);
       $('#btnDemo').addEventListener('click', fillDemo);
       $('#btnCalc').addEventListener('click', compute);
       $('#btnCSV').addEventListener('click', exportCSV);
       $('#btnPNG').addEventListener('click', downloadPNG);
 
+      $('#treatments').addEventListener('change', buildTreatmentNames);
+
       // 預設先建一份表格以免使用者看不到輸入區
-      buildTable();
+      buildInputs();
     });
   </script>
 </body>
