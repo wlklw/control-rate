@@ -13,7 +13,6 @@
       --muted: #9ca3af; /* gray-400 */
       --accent: #22c55e; /* green-500 */
       --border: #1f2937; /* gray-800 */
-      /* Ghost button colors for dark mode */
       --ghost-color: var(--text);
       --ghost-border: var(--border);
       --ghost-hover-border: #334155;
@@ -30,7 +29,6 @@
       --muted: #6b7280;
       --accent: #16a34a;
       --border: #e2e8f0;
-      /* Ghost button colors for light mode */
       --ghost-color: var(--muted);
       --ghost-border: #cbd5e1;
       --ghost-hover-border: #94a3b8;
@@ -317,7 +315,6 @@
                             stats.isSignificant[t][i] = true;
                         }
                     } catch (e) {
-                        // 如果數據太少或有問題，t-test 會報錯，忽略即可
                         console.warn('t-test failed for data points:', ctrlData, trData);
                     }
                 }
@@ -353,9 +350,9 @@
                 label: names[t],
                 data: stats.eff[t],
                 borderColor: colorFor(t),
-                backgroundColor: colorFor(t), // 長條圖需要背景色
+                backgroundColor: colorFor(t),
                 tension: 0, 
-                pointRadius: $('#chartType').value === 'line' ? 5 : 0, // 長條圖隱藏點
+                pointRadius: $('#chartType').value === 'line' ? 5 : 0,
                 pointBorderWidth: 2,
                 pointBackgroundColor: colorFor(t),
                 pointHoverRadius: 7,
@@ -468,7 +465,6 @@
         const ctx = $('#chartCanvas').getContext('2d');
         const chartType = $('#chartType').value;
         
-        // 直接在 JavaScript 中判斷並設定顏色
         const isLightMode = document.body.classList.contains('light-mode');
         const gridColor = isLightMode ? '#E5E7EB' : '#374151';
         const textColor = isLightMode ? '#1F2937' : '#F3F4F6';
@@ -477,7 +473,6 @@
         const tooltipBody = isLightMode ? '#6b7280' : '#9ca3af';
         const tooltipBorder = isLightMode ? '#e2e8f0' : '#1f2937';
 
-        // 根據圖表類型調整數據集
         let chartDatasets = datasets.map(dataset => ({
             ...dataset,
             backgroundColor: chartType === 'bar' ? dataset.borderColor : 'rgba(0,0,0,0)',
@@ -486,7 +481,7 @@
 
         chart = new Chart(ctx, {
             type: chartType,
-            data: { datasets: chartDatasets },
+            data: { labels, datasets: chartDatasets },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
@@ -524,7 +519,6 @@
                 },
                 scales: {
                     x: {
-                        labels: labels,
                         grid: { 
                             color: gridColor,
                             drawTicks: false
