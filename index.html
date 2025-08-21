@@ -53,7 +53,6 @@
     input::-webkit-outer-spin-button,input::-webkit-inner-spin-button{ -webkit-appearance:none; margin:0; }
     
     .button-group { display: flex; gap: 12px; flex-wrap: wrap; }
-    .input-group { display: flex; flex-direction: column; }
 
     button { background: #1f2937; border: 1px solid var(--border); color: var(--text); padding: 12px 16px; border-radius: 12px; cursor: pointer; transition: .15s ease; font-size: var(--font-size-sm); }
     button:hover { transform: translateY(-1px); border-color: #334155; }
@@ -87,123 +86,80 @@
     .sticky-actions { position: sticky; bottom: 0; background: rgba(11,18,32,.9); backdrop-filter: blur(6px); padding: 10px; display:flex; gap:8px; border:1px solid var(--border); border-radius:12px; }
     .chart-type-selector { margin-bottom: 12px; }
     .chart-type-selector label { font-size: var(--font-size-sm); margin-right: 8px; }
-    .significance-mark { color: var(--accent); font-weight: bold; font-size: 1.1em; padding-left: 2px; }
+    sup { color: var(--accent); font-weight: bold; font-size: 1em; }
   </style>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/simple-statistics@7.8.3/dist/simple-statistics.min.js"></script>
+</head>
+<body class="light-mode">
+  <header>
+    <h1>防治率計算器 <span class="badge">(X+0.5)½ 轉換 + 圖表</span></h1>
+    <button id="themeToggle" class="ghost" style="padding: 6px 10px;">切換主題</button>
+  </header>
+  <main>
+    <section class="card">
+      <div class="row" style="gap:20px">
+        <div>
+          <label>處理組數量</label><br>
+          <input id="treatments" type="number" min="1" value="3">
+        </div>
+        <div>
+          <label>重複數（含對照）</label><br>
+          <input id="replicates" type="number" min="1" value="3">
+        </div>
+        <div>
+          <label>時間點數量</label><br>
+          <input id="timepoints" type="number" min="1" value="12">
+        </div>
+        <div>
+          <label>時間點前綴</label><br>
+          <input id="tpPrefix" type="text" placeholder="例：月">
+        </div>
+      </div>
+      <div class="row" style="margin-top: 20px; justify-content: flex-start;">
+        <div class="button-group">
+          <button id="btnBuild" class="primary">產生輸入表格</button>
+          <button id="btnDemo" class="ghost">填入示範資料</button>
+          <button id="btnCalc" class="primary">計算防治率 & 繪圖</button>
+        </div>
+        <div class="button-group">
+          <button id="btnImport" class="ghost">匯入 CSV</button>
+          <button id="btnCSV" class="ghost">匯出 CSV</button>
+          <button id="btnPNG" class="ghost">下載圖表 PNG</button>
+          <input type="file" id="fileInput" accept=".csv" style="display:none;">
+        </div>
+      </div>
+      <div id="treatmentNames" style="margin-top:20px"></div>
+      <p class="note" style="font-size:var(--font-size-base)">轉換：<code>(X + 0.5)<sup>1/2</sup></code>；防治率（%）＝ <code>(1 − 平均處理區(轉換後) / 平均對照區(轉換後)) × 100</code>。若對照平均為 0（轉換後）則該時間點無法計算，會以 <code>—</code> 顯示並在圖上略過。</p>
+    </section>
+
+    <section class="card">
+      <h3 style="margin:0 0 12px">輸入資料</h3>
+      <div id="tableHost" class="scroll-x"></div>
+    </section>
+
+    <section class="card">
+      <h3 style="margin:0 0 12px">計算結果</h3>
+      <div id="resultHost" class="scroll-x"></div>
+      <p class="note" style="margin-top: 16px; font-size:var(--font-size-sm)">結果表格中，防治率後的 **\*** 號表示該處理組與對照組在該時間點，以 t-test 檢定具有顯著差異 (p-value &lt; 0.05)。</p>
+    </section>
+
+    <section class="card">
+      <h3 style="margin:0 0 12px">年度防治率圖表</h3>
+      <div class="chart-type-selector">
+        <label for="chartType">選擇圖表類型：</label>
+        <select id="chartType" style="padding:6px 8px; font-size: var(--font-size-sm); border-radius: 8px;">
+          <option value="line">折線圖</option>
+          <option value="bar">長條圖</option>
+        </select>
+      </div>
+      <div class="chart-container">
+        <canvas id="chartCanvas"></canvas>
+      </div>
+    </section>
+  </main>
+
   <script>
-    // ====== 統計學函式庫：ANOVA & Tukey's HSD ======
-    function anova(data) {
-        let grandMean = ss.mean(data.flat());
-        let SST = data.flat().reduce((sum, val) => sum + Math.pow(val - grandMean, 2), 0);
-        let SSW = data.reduce((sumGroup, group) => sumGroup + group.reduce((sumVal, val) => sumVal + Math.pow(val - ss.mean(group), 2), 0), 0);
-        let SSB = data.reduce((sumGroup, group) => sumGroup + group.length * Math.pow(ss.mean(group) - grandMean, 2), 0);
-        
-        let df_b = data.length - 1;
-        let df_w = data.flat().length - data.length;
-        let MSB = SSB / df_b;
-        let MSW = SSW / df_w;
-        let F = MSB / MSW;
-
-        // F-distribution CDF (Simplified for a p-value lookup)
-        // This is a simplified lookup, not a precise calculation.
-        // For accurate results, a full library is needed. For this demo,
-        // we'll assume a critical value check. F > F_critical -> p < 0.05
-        // A full implementation would use a library. Let's just return F for now.
-        return { pValue: 1 - anova.fCDF(F, df_b, df_w) };
-    }
-    // A simplified F-distribution CDF for the example
-    anova.fCDF = function(f, df1, df2) {
-        // A very rough approximation, for a real tool, a proper library is needed
-        // This is just to demonstrate the logic flow.
-        // For this specific use case, we only need a rough p-value check.
-        // Let's use a simpler check: if F > a certain critical value, consider it significant.
-        // This is not mathematically rigorous, but illustrates the concept for this specific context.
-        return f > 3.5 ? 0.01 : 0.5; // Example critical value check
-    };
-
-    function tukeyHSD(data, alpha = 0.05) {
-        let means = data.map(group => ss.mean(group));
-        let n = data[0].length;
-        if (data.some(group => group.length !== n)) {
-             // For unequal sample sizes, use the harmonic mean.
-             // This is a simplified implementation. We'll assume equal sizes for the demo.
-        }
-
-        let groups = data.length;
-        let allData = data.flat();
-        let SSW = data.reduce((sumGroup, group) => sumGroup + group.reduce((sumVal, val) => sumVal + Math.pow(val - ss.mean(group), 2), 0), 0);
-        let df_w = allData.length - groups;
-        let MSW = SSW / df_w;
-        let Q_critical = { // Tukey's Q critical values for alpha = 0.05
-            3: { df: 3, q: 3.55 }, 4: { df: 4, q: 3.93 }, 5: { df: 5, q: 4.2 }, 6: { df: 6, q: 4.41 }, 7: { df: 7, q: 4.59 }, 8: { df: 8, q: 4.74 }, 9: { df: 9, q: 4.85 }, 10: { df: 10, q: 4.96 }
-        };
-        let q_val = Q_critical[groups] ? Q_critical[groups].q : 5; // Default for more groups
-
-        let results = [];
-        let meansCopy = [...means];
-        let sortedMeans = meansCopy.sort((a,b) => a-b);
-        let letters = {};
-        let currentLetter = 'a';
-        let sortedLetters = {};
-
-        for (let i = 0; i < sortedMeans.length; i++) {
-            let currentMean = sortedMeans[i];
-            if (!letters[currentMean]) {
-                letters[currentMean] = currentLetter;
-            }
-        }
-
-        let tukeyTest = (mean1, mean2) => {
-            let diff = Math.abs(mean1 - mean2);
-            let HSD = q_val * Math.sqrt(MSW / n);
-            return diff > HSD;
-        };
-
-        for (let i = 0; i < means.length; i++) {
-            for (let j = i + 1; j < means.length; j++) {
-                if (tukeyTest(means[i], means[j])) {
-                    // They are significantly different. Assign different letters.
-                    let meanA = means[i];
-                    let meanB = means[j];
-                    let letterA = letters[meanA];
-                    let letterB = letters[meanB];
-                    if (letterA === letterB) {
-                        currentLetter = String.fromCharCode(currentLetter.charCodeAt(0) + 1);
-                        letters[meanB] = currentLetter;
-                    }
-                } else {
-                    // Not significantly different. Assign same letters.
-                    let meanA = means[i];
-                    let meanB = means[j];
-                    let letterA = letters[meanA];
-                    let letterB = letters[meanB];
-                    letters[meanA] = letterA;
-                    letters[meanB] = letterA;
-                }
-            }
-        }
-        
-        let sortedUniqueMeans = [...new Set(means)].sort((a,b)=>a-b);
-        let finalLetters = {};
-        let currentFinalLetter = 'a';
-        finalLetters[sortedUniqueMeans[0]] = currentFinalLetter;
-
-        for (let i = 1; i < sortedUniqueMeans.length; i++) {
-            if (tukeyTest(sortedUniqueMeans[i], sortedUniqueMeans[i-1])) {
-                currentFinalLetter = String.fromCharCode(currentFinalLetter.charCodeAt(0) + 1);
-            }
-            finalLetters[sortedUniqueMeans[i]] = currentFinalLetter;
-        }
-
-        let output = {};
-        means.forEach((mean, index) => {
-            output[index] = finalLetters[mean];
-        });
-
-        return output;
-    }
-
     // ====== 公用函式 ======
     const $ = (sel) => document.querySelector(sel);
     const trans = (x) => Math.sqrt((Number(x) || 0) + 0.5);
@@ -329,7 +285,7 @@
             trSd: Array.from({ length: T }, () => []),
             trCv: Array.from({ length: T }, () => []),
             eff: Array.from({ length: T }, () => []),
-            significanceLetters: Array.from({ length: N }, () => [])
+            isSignificant: Array.from({ length: T }, () => [])
         };
         
         for (let i = 0; i < N; i++) {
@@ -338,8 +294,6 @@
             stats.ctrlSd[i] = ctrlData.length > 1 ? ss.standardDeviation(ctrlData) : NaN;
             stats.ctrlCv[i] = stats.ctrlSd[i] / stats.ctrlAvg[i] * 100;
             
-            // Collect all treatment data for this time point for ANOVA
-            let allTrData = [];
             for (let t = 0; t < T; t++) {
                 const trData = trDataTransformed[t][i].filter(v => isFinite(v));
                 stats.trAvg[t][i] = trData.length > 0 ? ss.mean(trData) : NaN;
@@ -349,28 +303,18 @@
                 const c = stats.ctrlAvg[i];
                 const a = stats.trAvg[t][i];
                 stats.eff[t][i] = (isFinite(c) && c > 0) ? round2((1 - a / c) * 100) : null;
-                
-                allTrData.push(trData);
-            }
 
-            // Perform ANOVA and Tukey's HSD for this time point
-            if (allTrData.length >= 2 && allTrData.every(group => group.length >= 2)) {
-                try {
-                    const anovaResult = anova(allTrData);
-                    if (anovaResult.pValue < 0.05) {
-                        stats.significanceLetters[i] = tukeyHSD(allTrData);
-                    } else {
-                        stats.significanceLetters[i] = {};
-                        for (let t = 0; t < T; t++) {
-                            stats.significanceLetters[i][t] = 'a';
+                stats.isSignificant[t][i] = false;
+                if (ctrlData.length >= 2 && trData.length >= 2) {
+                    try {
+                        const tTestResult = ss.tTestTwoSample(ctrlData, trData);
+                        if (tTestResult.pValue < 0.05) {
+                            stats.isSignificant[t][i] = true;
                         }
+                    } catch (e) {
+                        console.warn('t-test failed for data points:', ctrlData, trData);
                     }
-                } catch (e) {
-                    console.warn(`ANOVA failed for time point ${i+1}:`, e);
-                    stats.significanceLetters[i] = {};
                 }
-            } else {
-                 stats.significanceLetters[i] = {};
             }
         }
         
@@ -379,7 +323,7 @@
         for (let t = 0; t < T; t++) html += `<th colspan="2" class="stats-header">${names[t]} (轉換後)</th>`;
         html += '</tr><tr>';
         html += '<th class="stats-header">平均值</th><th class="stats-header">標準差</th><th class="stats-header">變異係數(%)</th>';
-        for (let t = 0; t < T; t++) html += `<th class="stats-header">防治率(%)<br>顯著性</th><th class="stats-header">變異係數(%)</th>`;
+        for (let t = 0; t < T; t++) html += '<th class="stats-header">防治率(%)</th><th class="stats-header">變異係數(%)</th>';
         html += '</tr></thead><tbody>';
         
         for (let i = 0; i < N; i++) {
@@ -387,8 +331,8 @@
             html += `<td>${isFinite(stats.ctrlAvg[i]) ? round2(stats.ctrlAvg[i]) : '—'}</td><td>${isFinite(stats.ctrlSd[i]) ? round2(stats.ctrlSd[i]) : '—'}</td><td>${isFinite(stats.ctrlCv[i]) ? round1(stats.ctrlCv[i]) : '—'}</td>`;
             for (let t = 0; t < T; t++) {
                 const effText = (stats.eff[t][i] === null ? '—' : stats.eff[t][i]);
-                const sigLetter = stats.significanceLetters[i][t] !== undefined ? `<span class="significance-mark">${stats.significanceLetters[i][t]}</span>` : '—';
-                html += `<td>${effText}<br>${sigLetter}</td><td>${isFinite(stats.trCv[t][i]) ? round1(stats.trCv[t][i]) : '—'}</td>`;
+                const significantMark = (stats.isSignificant[t][i] ? '<sup>*</sup>' : '');
+                html += `<td>${effText}${significantMark}</td><td>${isFinite(stats.trCv[t][i]) ? round1(stats.trCv[t][i]) : '—'}</td>`;
             }
             html += '</tr>';
         }
@@ -420,16 +364,15 @@
         const { labels, ctrlAvg, stats } = cache;
         const header = ['時間點', '對照平均(轉換後)', '對照標準差', '對照變異係數(%)'];
         for (let t = 0; t < stats.trAvg.length; t++) {
-            header.push(`${getTreatmentNames()[t]} 防治率(%)`, `${getTreatmentNames()[t]} 顯著性`, `${getTreatmentNames()[t]} 變異係數(%)`);
+            header.push(`${getTreatmentNames()[t]} 防治率(%)`, `${getTreatmentNames()[t]} 變異係數(%)`);
         }
         const rows = [header];
         for (let i = 0; i < labels.length; i++) {
             const row = [labels[i], round2(ctrlAvg[i]), round2(stats.ctrlSd[i]), round1(stats.ctrlCv[i])];
             for (let t = 0; t < stats.trAvg.length; t++) {
                 const eff = stats.eff[t][i] ?? '';
-                const sig = stats.significanceLetters[i][t] ?? '';
                 const cv = stats.trCv[t][i] ?? '';
-                row.push(eff, sig, round1(cv));
+                row.push(eff, round1(cv));
             }
             rows.push(row);
         }
