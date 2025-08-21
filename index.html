@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <title>防治率計算器</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 20px; }
+    h1 { color: #2c3e50; }
+    label { margin-right: 10px; }
+    input { margin: 5px; width: 80px; }
+    table { border-collapse: collapse; margin-top: 15px; }
+    th, td { border: 1px solid #ccc; padding: 5px; text-align: center; }
+    th { background: #eee; }
+    .container { margin-top: 20px; }
+    #chartContainer { margin-top: 30px; }
+  </style>
+</head>
+<body>
+  <h1>防治率計算器</h1>
+
+  <div>
+    <label>處理組數量:</label>
+    <input type="number" id="treatments" value="2" min="1">
+    <label>重複數:</label>
+    <input type="number" id="replicates" value="3" min="1">
+    <label>時間點數量 (例如月份):</label>
+    <input type="number" id="timepoints" value="12" min="1">
+    <button onclick="generateTable()">產生輸入表格</button>
+  </div>
+
+  <div id="tableContainer"></div>
+  <div>
+    <button onclick="calculate()">計算防治率並繪圖</button>
+  </div>
+
+  <div class="container" id="resultContainer"></div>
+
+  <div id="chartContainer">
+    <canvas id="chart"></canvas>
+  </div>
+
+<script>
+let chart;
+
+function generateTable() {
+  const treatments = parseInt(document.getElementById("treatments").value);
+  const replicates = parseInt(document.getElementById("replicates").value);
+  const timepoints = parseInt(document.getElementById("timepoints").value);
+
+  let html = "<table><tr><th>時間點</th><th>對照組</th>";
+  for (let t = 1; t <= treatments; t++) {
+    for (let r = 1; r <= replicates; r++) {
+      html += `<th>處理${t}-重複${r}</th>`;
+    }
+  }
+  html += "</tr>";
+
+  for (let tp = 1; tp <= timepoints; tp++) {
+    html += `<tr><td>${tp}</td>`;
+    html += `<td><input type="number" id="control_${tp}" value="0"></td>`;
+    for (let t = 1; t <= treatments; t++) {
+      for (let r = 1; r <= replicates; r++) {
+        html += `<td><input type="number" id="t${t}r${r}_${tp}" value="0"></td>`;
+      }
+    }
+    html += "</tr>";
+  }
+  html += "</table>";
+
+  document.getElementById("tableContainer").innerHTML = html;
+}
+
+function calculate() {
+  const treatments = parseInt(document.getElementById("treatments").value);
+  const replicates = parseInt(document.getElementById("replicates").value);
+  const timepoints = parseInt(document.getElementById("timepoints").value);
+
+  let results = [];
+  for (let t = 1; t <= treatments; t++) {
+    results[t] = [];
+    for (let tp = 1; tp <= timepoints; tp++) {
+      let control = parseFloat(document.getElementById(`control_${tp}`).value) || 0;
+      control = Math.sqrt(control + 0.5); // 蟲數轉換
+
+      let sumTreat = 0;
+      for (let r = 1; r <= replicates; r++) {
+        let val = parseFloat(document.getElementById(`t${t}r${r}_${tp}`).value) || 0;
+        val = Math.sqrt(val + 0.5);
+        sumTreat += val;
+      }
+      let avgTreat = sumTreat / replicates;
+
+      let controlValue = control > 0 ? control : 1e-6; // 避免除以零
+      let efficacy = (1 - avgTreat / controlValue) * 100;
+      results[t].push(efficacy.toFixed(2));
+    }
+  }
+
+  // 顯示結果表格
+  let html = "<h2>計算結果</h2><table><tr><th>時間點</th>";
+  for (let t = 1; t <= treatments; t++) {
+    html += `<th>處理${t} 防治率(%)</th>`;
+  }
+  html += "</tr>";
+
+  for (let tp = 1; tp <= timepoints; tp++) {
+    html += `<tr><td>${tp}</td>`;
+    for (let t = 1; t <= treatments; t++) {
+      html += `<td>${results[t][tp-1]}</td>`;
+    }
+    html += "</tr>`;
+  }
+  html += "</table>";
+
+  document.getElementById("resultContainer").innerHTML = html;
+
+  // 畫圖
+  let datasets = [];
+  for (let t = 1; t <= treatments; t++) {
+    datasets.push({
+      label: `處理${t}`,
+      data: results[t],
+      borderColor: `hsl(${t*60}, 70%, 50%)`,
+      fill: false,
+    });
+  }
+
+  const ctx = document.getElementById("chart").getContext("2d");
+  if (chart) chart.destroy();
+  chart = new Chart(ctx, {
+    type: "line",
+    data: {
+      labels: Array.from({length: timepoints}, (_, i) => i + 1),
+      datasets: datasets
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        title: { display: true, text: "防治率折線圖" }
+      },
+      scales: {
+        y: { beginAtZero: true, title: { display: true, text: "防治率 (%)" } },
+        x: { title: { display: true, text: "時間點" } }
+      }
+    }
+  });
+}
+</script>
+</body>
+</html>
