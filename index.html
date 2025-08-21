@@ -13,8 +13,8 @@
       --muted: #9ca3af; /* gray-400 */
       --accent: #22c55e; /* green-500 */
       --border: #1f2937; /* gray-800 */
-      --chart-grid: #1f2937; /* For dark mode */
-      --chart-text: #e5e7eb; /* For dark mode, bright text */
+      --chart-grid: #374151; /* For dark mode, slightly brighter gray */
+      --chart-text: #F3F4F6; /* For dark mode, light gray */
       /* Ghost button colors for dark mode */
       --ghost-color: var(--text);
       --ghost-border: var(--border);
@@ -28,8 +28,8 @@
       --muted: #6b7280;
       --accent: #16a34a;
       --border: #e2e8f0;
-      --chart-grid: #e2e8f0; /* For light mode */
-      --chart-text: #1f2937; /* For light mode, dark text */
+      --chart-grid: #E5E7EB; /* For light mode */
+      --chart-text: #1F2937; /* For light mode, dark text */
       /* Ghost button colors for light mode */
       --ghost-color: var(--muted);
       --ghost-border: #cbd5e1;
@@ -418,6 +418,11 @@
         const rootStyles = getComputedStyle(document.documentElement);
         const chartGridColor = rootStyles.getPropertyValue('--chart-grid').trim();
         const chartTextColor = rootStyles.getPropertyValue('--chart-text').trim();
+        const tooltipBgColor = rootStyles.getPropertyValue('--panel-2').trim();
+        const tooltipTitleColor = rootStyles.getPropertyValue('--text').trim();
+        const tooltipBodyColor = rootStyles.getPropertyValue('--muted').trim();
+        const tooltipBorderColor = rootStyles.getPropertyValue('--border').trim();
+
 
         chart = new Chart(ctx, {
             type: 'line',
@@ -445,10 +450,10 @@
                     tooltip: {
                         mode: 'index',
                         intersect: false,
-                        backgroundColor: 'var(--panel-2)',
-                        titleColor: 'var(--text)',
-                        bodyColor: 'var(--muted)',
-                        borderColor: 'var(--border)',
+                        backgroundColor: tooltipBgColor,
+                        titleColor: tooltipTitleColor,
+                        bodyColor: tooltipBodyColor,
+                        borderColor: tooltipBorderColor,
                         borderWidth: 1,
                         padding: 10,
                         callbacks: {
@@ -529,23 +534,9 @@
         $('#themeToggle').addEventListener('click', () => {
             document.body.classList.toggle('light-mode');
             localStorage.setItem('theme', document.body.classList.contains('light-mode') ? 'light' : 'dark');
-            if (chart) {
-                const rootStyles = getComputedStyle(document.documentElement);
-                const chartGridColor = rootStyles.getPropertyValue('--chart-grid').trim();
-                const chartTextColor = rootStyles.getPropertyValue('--chart-text').trim();
-
-                chart.data.datasets.forEach((dataset, i) => {
-                    dataset.borderColor = colorFor(i);
-                    dataset.pointBackgroundColor = colorFor(i);
-                });
-                chart.options.scales.x.grid.color = chartGridColor;
-                chart.options.scales.x.ticks.color = chartTextColor;
-                chart.options.scales.x.title.color = chartTextColor;
-                chart.options.scales.y.grid.color = chartGridColor;
-                chart.options.scales.y.ticks.color = chartTextColor;
-                chart.options.scales.y.title.color = chartTextColor;
-                chart.options.plugins.legend.labels.color = chartTextColor;
-                chart.update();
+            // Re-draw chart with new theme colors
+            if (window.__calcCache) {
+                drawChart(window.__calcCache.labels, window.__calcCache.datasets);
             }
         });
 
