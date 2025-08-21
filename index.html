@@ -44,42 +44,42 @@
     main { padding: 20px 24px 80px; max-width: 1200px; margin: 0 auto; display: block; }
 
     .row { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
-.card { background: linear-gradient(180deg, var(--panel), var(--panel-2)); border: 1px solid var(--border); border-radius: 16px; padding: 16px; box-shadow: 0 10px 30px rgba(0,0,0,.25);
-  margin-bottom: 16px; }
-body.light-mode .card { box-shadow: 0 4px 12px rgba(0,0,0,.08); }
-label { font-size: 13px; color: var(--muted); }
-input { background: var(--panel-2); color: var(--text); border: 1px solid var(--border); border-radius: 10px; padding: 8px 10px; width: 110px; }
-input::-webkit-outer-spin-button,input::-webkit-inner-spin-button{ -webkit-appearance:none; margin:0; }
+    .card { background: linear-gradient(180deg, var(--panel), var(--panel-2)); border: 1px solid var(--border); border-radius: 16px; padding: 16px; box-shadow: 0 10px 30px rgba(0,0,0,.25);
+      margin-bottom: 16px; }
+    body.light-mode .card { box-shadow: 0 4px 12px rgba(0,0,0,.08); }
+    label { font-size: 13px; color: var(--muted); }
+    input { background: var(--panel-2); color: var(--text); border: 1px solid var(--border); border-radius: 10px; padding: 8px 10px; width: 110px; }
+    input::-webkit-outer-spin-button,input::-webkit-inner-spin-button{ -webkit-appearance:none; margin:0; }
 
-button { background: #1f2937; border: 1px solid var(--border); color: var(--text); padding: 10px 14px; border-radius: 12px; cursor: pointer; transition: .15s ease; }
-button:hover { transform: translateY(-1px); border-color: #334155; }
-button.primary { background: var(--accent); color: #06290f; border-color: #16a34a; font-weight: 600; }
-button.ghost { background: transparent; color: var(--ghost-color); border-color: var(--ghost-border); }
-button.ghost:hover { border-color: var(--ghost-hover-border); }
-button.ghost:active { transform: translateY(0); } /* Added for better UI feel */
+    button { background: #1f2937; border: 1px solid var(--border); color: var(--text); padding: 10px 14px; border-radius: 12px; cursor: pointer; transition: .15s ease; }
+    button:hover { transform: translateY(-1px); border-color: #334155; }
+    button.primary { background: var(--accent); color: #06290f; border-color: #16a34a; font-weight: 600; }
+    button.ghost { background: transparent; color: var(--ghost-color); border-color: var(--ghost-border); }
+    button.ghost:hover { border-color: var(--ghost-hover-border); }
+    button.ghost:active { transform: translateY(0); } /* Added for better UI feel */
 
-table { width: 100%; border-collapse: collapse; font-size: 13px; }
-th, td { border: 1px solid var(--border); padding: 6px 8px; text-align: center; }
-th { background: var(--panel-2); position: sticky; top: 0; z-index: 1; }
-body.light-mode th { background: #e2e8f0; }
-.treatment-group { background: #1c273a; }
-body.light-mode .treatment-group { background: #eff6ff; }
-.treatment-group:nth-child(even) { background: #16202f; }
-body.light-mode .treatment-group:nth-child(even) { background: #e2e8f0; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th, td { border: 1px solid var(--border); padding: 6px 8px; text-align: center; }
+    th { background: var(--panel-2); position: sticky; top: 0; z-index: 1; }
+    body.light-mode th { background: #e2e8f0; }
+    .treatment-group { background: #1c273a; }
+    body.light-mode .treatment-group { background: #eff6ff; }
+    .treatment-group:nth-child(even) { background: #16202f; }
+    body.light-mode .treatment-group:nth-child(even) { background: #e2e8f0; }
 
-.muted { color: var(--muted); }
-.note { font-size: 12px; color: var(--muted); margin-top: 6px; }
-.badge { font-size: 12px; color: #0b1324; background: #86efac; padding: 2px 8px; border-radius: 999px; margin-left: 8px; }
-body.light-mode .badge { background: #bbf7d0; }
+    .muted { color: var(--muted); }
+    .note { font-size: 12px; color: var(--muted); margin-top: 6px; }
+    .badge { font-size: 12px; color: #0b1324; background: #86efac; padding: 2px 8px; border-radius: 999px; margin-left: 8px; }
+    body.light-mode .badge { background: #bbf7d0; }
 
-.legend { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; margin-top: 8px; }
-.legend-item { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); }
-.swatch { width: 14px; height: 14px; border-radius: 3px; }
+    .legend { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; margin-top: 8px; }
+    .legend-item { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); }
+    .swatch { width: 14px; height: 14px; border-radius: 3px; }
 
-canvas { max-width: 100%; height: auto; background: var(--panel-2); border: 1px solid var(--border); border-radius: 16px; }
-.chart-container { position: relative; width: 100%; height: auto; }
-.scroll-x { overflow-x: auto; }
-.sticky-actions { position: sticky; bottom: 0; background: rgba(11,18,32,.9); backdrop-filter: blur(6px); padding: 10px; display:flex; gap:8px; border:1px solid var(--border); border-radius:12px; }
+    canvas { max-width: 100%; height: auto; background: var(--panel-2); border: 1px solid var(--border); border-radius: 16px; }
+    .chart-container { position: relative; width: 100%; height: auto; }
+    .scroll-x { overflow-x: auto; }
+    .sticky-actions { position: sticky; bottom: 0; background: rgba(11,18,32,.9); backdrop-filter: blur(6px); padding: 10px; display:flex; gap:8px; border:1px solid var(--border); border-radius:12px; }
   </style>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
@@ -122,21 +122,21 @@ canvas { max-width: 100%; height: auto; background: var(--panel-2); border: 1px 
     </section>
 
     <section class="card">
-  <h3 style="margin:0 0 8px">輸入資料</h3>
-  <div id="tableHost" class="scroll-x"></div>
-</section>
+      <h3 style="margin:0 0 8px">輸入資料</h3>
+      <div id="tableHost" class="scroll-x"></div>
+    </section>
 
-<section class="card">
-  <h3 style="margin:0 0 8px">計算結果</h3>
-  <div id="resultHost" class="scroll-x"></div>
-</section>
+    <section class="card">
+      <h3 style="margin:0 0 8px">計算結果</h3>
+      <div id="resultHost" class="scroll-x"></div>
+    </section>
 
-<section class="card">
-  <h3 style="margin:0 0 8px">年度防治率折線圖</h3>
-  <div class="chart-container">
-    <canvas id="chartCanvas"></canvas>
-  </div>
-</section>
+    <section class="card">
+      <h3 style="margin:0 0 8px">年度防治率折線圖</h3>
+      <div class="chart-container">
+        <canvas id="chartCanvas"></canvas>
+      </div>
+    </section>
   </main>
 
   <script>
@@ -147,11 +147,13 @@ canvas { max-width: 100%; height: auto; background: var(--panel-2); border: 1px 
     const round2 = (v) => (isFinite(v) ? Math.round(v * 100) / 100 : v);
 
     // 色板（最多 12 組處理）
-   function colorFor(i) {
-    const colors = [&#39;#22c55e&#39;, &#39;#ef4444&#39;, &#39;#3b82f6&#39;, &#39;#f97316&#39;, &#39;#a855f7&#39;, &#39;#14b8a6&#39;, &#39;#f59e0b&#39;, &#39;#d946ef&#39;, &#39;#6366f1&#39;, &#39;#ec4899&#39;, &#39;#84cc16&#39;, &#39;#6b7280&#39;];
-    const lightColors = [&#39;#22c55e&#39;, &#39;#ef4444&#39;, &#39;#3b82f6&#39;, &#39;#f97316&#39;, &#39;#a855f7&#39;, &#39;#14b8a6&#39;, &#39;#f59e0b&#39;, &#39;#d946ef&#39;, &#39;#6366f1&#39;, &#39;#ec4899&#39;, &#39;#84cc16&#39;, &#39;#6b7280&#39;];
-    const theme = $(&#39;body&#39;).classList.contains(&#39;light-mode&#39;) ? &#39;light&#39; : &#39;dark&#39;;
-    if (theme === &#39;light&#39;) return lightColors
+    function colorFor(i) {
+        const colors = ['#22c55e', '#ef4444', '#3b82f6', '#f97316', '#a855f7', '#14b8a6', '#f59e0b', '#d946ef', '#6366f1', '#ec4899', '#84cc16', '#6b7280'];
+        const lightColors = ['#22c55e', '#ef4444', '#3b82f6', '#f97316', '#a855f7', '#14b8a6', '#f59e0b', '#d946ef', '#6366f1', '#ec4899', '#84cc16', '#6b7280'];
+        const theme = $('body').classList.contains('light-mode') ? 'light' : 'dark';
+        if (theme === 'light') return lightColors[i % lightColors.length];
+        return colors[i % colors.length];
+    }
     
     // ====== 動態建立輸入表格與處理組名稱 ======
     function buildInputs() {
@@ -294,9 +296,13 @@ canvas { max-width: 100%; height: auto; background: var(--panel-2); border: 1px 
                 label: names[t],
                 data: eff[t],
                 borderColor: colorFor(t),
-                tension: 0.2,
-                pointRadius: 4,
+                backgroundColor: 'rgba(0,0,0,0)', // 透明背景
+                tension: 0.4, // 更平滑的線條
+                pointRadius: 5, // 更大的資料點
+                pointBorderWidth: 2, // 資料點邊框
                 pointBackgroundColor: colorFor(t),
+                pointHoverRadius: 7, // 滑鼠懸停時更大的資料點
+                pointHoverBorderWidth: 2
             });
         }
         drawChart(labels, datasets);
@@ -414,11 +420,21 @@ canvas { max-width: 100%; height: auto; background: var(--panel-2); border: 1px 
                 plugins: {
                     legend: {
                         position: 'bottom',
-                        labels: { boxWidth: 15, color: 'var(--muted)' }
+                        labels: { 
+                            boxWidth: 15,
+                            color: 'var(--muted)',
+                            font: { size: 12 }
+                        }
                     },
                     tooltip: {
                         mode: 'index',
                         intersect: false,
+                        backgroundColor: 'var(--panel-2)',
+                        titleColor: 'var(--text)',
+                        bodyColor: 'var(--muted)',
+                        borderColor: 'var(--border)',
+                        borderWidth: 1,
+                        padding: 10,
                         callbacks: {
                             label: function(context) {
                                 let label = context.dataset.label || '';
@@ -435,14 +451,27 @@ canvas { max-width: 100%; height: auto; background: var(--panel-2); border: 1px 
                 },
                 scales: {
                     x: {
-                        grid: { color: 'var(--border)' },
+                        grid: { 
+                            color: 'var(--border)',
+                            drawTicks: false
+                        },
                         ticks: { color: 'var(--muted)' },
                         title: { display: true, text: '時間點', color: 'var(--text)' }
                     },
                     y: {
-                        grid: { color: 'var(--border)', zeroLineColor: 'rgba(255,255,255,.5)' },
-                        ticks: { color: 'var(--muted)' },
+                        grid: { 
+                            color: 'var(--border)',
+                            zeroLineColor: 'rgba(255,255,255,.5)' 
+                        },
+                        ticks: { 
+                            color: 'var(--muted)',
+                            callback: function(value) {
+                                return value + '%';
+                            }
+                        },
                         title: { display: true, text: '防治率 (%)', color: 'var(--text)' },
+                        suggestedMin: -10, // 增加底部緩衝
+                        suggestedMax: 110 // 增加頂部緩衝
                     }
                 }
             }
