@@ -411,12 +411,13 @@
     function drawChart(labels, datasets) {
         clearChart();
         const ctx = $('#chartCanvas').getContext('2d');
+        const theme = $('body').classList.contains('light-mode') ? 'light' : 'dark';
         chart = new Chart(ctx, {
             type: 'line',
             data: { labels, datasets },
             options: {
                 responsive: true,
-                maintainAspectRatio: false, // 確保圖表不會被固定長寬比限制
+                maintainAspectRatio: false,
                 layout: {
                     padding: {
                         left: 10,
