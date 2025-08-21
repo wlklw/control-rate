@@ -14,6 +14,7 @@
     th { background: #eee; }
     .container { margin-top: 20px; }
     #chartContainer { margin-top: 30px; }
+    button { margin: 10px 5px; padding: 6px 12px; }
   </style>
 </head>
 <body>
@@ -32,6 +33,7 @@
   <div id="tableContainer"></div>
   <div>
     <button onclick="calculate()">計算防治率並繪圖</button>
+    <button onclick="fillDemo()">填入示範資料</button>
   </div>
 
   <div class="container" id="resultContainer"></div>
@@ -43,6 +45,7 @@
 <script>
 let chart;
 
+// 產生輸入表格
 function generateTable() {
   const treatments = parseInt(document.getElementById("treatments").value);
   const replicates = parseInt(document.getElementById("replicates").value);
@@ -71,6 +74,7 @@ function generateTable() {
   document.getElementById("tableContainer").innerHTML = html;
 }
 
+// 計算防治率
 function calculate() {
   const treatments = parseInt(document.getElementById("treatments").value);
   const replicates = parseInt(document.getElementById("replicates").value);
@@ -81,7 +85,7 @@ function calculate() {
     results[t] = [];
     for (let tp = 1; tp <= timepoints; tp++) {
       let control = parseFloat(document.getElementById(`control_${tp}`).value) || 0;
-      control = Math.sqrt(control + 0.5); // 蟲數轉換
+      control = Math.sqrt(control + 0.5);
 
       let sumTreat = 0;
       for (let r = 1; r <= replicates; r++) {
@@ -91,9 +95,9 @@ function calculate() {
       }
       let avgTreat = sumTreat / replicates;
 
-      let controlValue = control > 0 ? control : 1e-6; // 避免除以零
+      let controlValue = control > 0 ? control : 1e-6;
       let efficacy = (1 - avgTreat / controlValue) * 100;
-      results[t].push(efficacy.toFixed(2));
+      results[t].push(parseFloat(efficacy.toFixed(2)));
     }
   }
 
@@ -102,4 +106,66 @@ function calculate() {
   for (let t = 1; t <= treatments; t++) {
     html += `<th>處理${t} 防治率(%)</th>`;
   }
-  html +=
+  html += "</tr>";
+
+  for (let tp = 1; tp <= timepoints; tp++) {
+    html += `<tr><td>${tp}</td>`;
+    for (let t = 1; t <= treatments; t++) {
+      html += `<td>${results[t][tp-1]}</td>`;
+    }
+    html += "</tr>";
+  }
+  html += "</table>";
+
+  document.getElementById("resultContainer").innerHTML = html;
+
+  // 畫圖
+  let datasets = [];
+  for (let t = 1; t <= treatments; t++) {
+    datasets.push({
+      label: `處理${t}`,
+      data: results[t],
+      borderColor: `hsl(${t*70}, 70%, 50%)`,
+      fill: false,
+    });
+  }
+
+  const ctx = document.getElementById("chart").getContext("2d");
+  if (chart) chart.destroy();
+  chart = new Chart(ctx, {
+    type: "line",
+    data: {
+      labels: Array.from({length: timepoints}, (_, i) => i + 1),
+      datasets: datasets
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        title: { display: true, text: "防治率折線圖" }
+      },
+      scales: {
+        y: { beginAtZero: true, title: { display: true, text: "防治率 (%)" } },
+        x: { title: { display: true, text: "時間點" } }
+      }
+    }
+  });
+}
+
+// 填入假資料示範
+function fillDemo() {
+  const treatments = parseInt(document.getElementById("treatments").value);
+  const replicates = parseInt(document.getElementById("replicates").value);
+  const timepoints = parseInt(document.getElementById("timepoints").value);
+
+  for (let tp = 1; tp <= timepoints; tp++) {
+    document.getElementById(`control_${tp}`).value = Math.floor(Math.random() * 20 + 10);
+    for (let t = 1; t <= treatments; t++) {
+      for (let r = 1; r <= replicates; r++) {
+        document.getElementById(`t${t}r${r}_${tp}`).value = Math.floor(Math.random() * 15 + 1);
+      }
+    }
+  }
+}
+</script>
+</body>
+</html>
