@@ -153,11 +153,22 @@
     // 色板（最多 12 組處理）
     function colorFor(i) {
         const colors = ['#22c55e', '#ef4444', '#3b82f6', '#f97316', '#a855f7', '#14b8a6', '#f59e0b', '#d946ef', '#6366f1', '#ec4899', '#84cc16', '#6b7280'];
-        const theme = $('body').classList.contains('light-mode') ? 'light' : 'dark';
-        if (theme === 'light') return colors[i % colors.length];
         return colors[i % colors.length];
     }
-    
+
+    // 獲取圖表顏色變數
+    function getChartColors() {
+        const rootStyles = getComputedStyle(document.documentElement);
+        return {
+            grid: rootStyles.getPropertyValue('--chart-grid').trim(),
+            text: rootStyles.getPropertyValue('--chart-text').trim(),
+            tooltipBg: rootStyles.getPropertyValue('--panel-2').trim(),
+            tooltipTitle: rootStyles.getPropertyValue('--text').trim(),
+            tooltipBody: rootStyles.getPropertyValue('--muted').trim(),
+            tooltipBorder: rootStyles.getPropertyValue('--border').trim()
+        };
+    }
+
     // ====== 動態建立輸入表格與處理組名稱 ======
     function buildInputs() {
         buildTreatmentNames();
@@ -308,7 +319,7 @@
                 pointHoverBorderWidth: 2
             });
         }
-        drawChart(labels, datasets);
+        drawChart(labels, datasets, getChartColors());
 
         // 給 CSV / 下載用暫存
         window.__calcCache = { labels, ctrlAvg, eff, datasets };
@@ -333,28 +344,22 @@
         URL.revokeObjectURL(a.href);
     }
 
-    // ====== 匯入 CSV ======
+    // ====== 根據 CSV 格式匯入 ======
     function importCSV(e) {
         const file = e.target.files[0];
         if (!file) return;
-
         const reader = new FileReader();
         reader.onload = function(event) {
             const text = event.target.result;
             const lines = text.split('\n').filter(line => line.trim() !== '');
             if (lines.length < 2) { alert('CSV 格式錯誤，請確保檔案包含標題和至少一行數據。'); return; }
-
             const header = lines[0].split(',');
             const dataRows = lines.slice(1).map(line => line.split(','));
-
             const T = parseInt($('#treatments').value) || 1;
             const R = parseInt($('#replicates').value) || 1;
             const N = dataRows.length;
-
             $('#replicates').value = R;
             $('#timepoints').value = N;
-
-            // Update treatment names
             const names = [];
             for (let t = 1; t <= T; t++) {
                 const regex = new RegExp(`處理${t}-重複1`);
@@ -370,24 +375,19 @@
             names.forEach((name, i) => {
                 if ($(`#tName_${i + 1}`)) $(`#tName_${i + 1}`).value = name;
             });
-            
             buildTable();
-
-            // Fill table with imported data
             const totalCols = R + (T * R) + 1;
             for (let i = 0; i < N; i++) {
                 const rowData = dataRows[i];
                 if (rowData.length < totalCols) continue;
-                // Control group
                 for (let r = 1; r <= R; r++) {
                     const input = $(`#ctrl_${i + 1}_${r}`);
                     if (input) input.value = rowData[r] || '';
                 }
-                // Treatment groups
                 for (let t = 1; t <= T; t++) {
                     for (let r = 1; r <= R; r++) {
                         const input = $(`#t${t}_${i + 1}_${r}`);
-                        const dataIndex = R + (t-1) * R + r;
+                        const dataIndex = R + (t - 1) * R + r;
                         if (input) input.value = rowData[dataIndex] || '';
                     }
                 }
@@ -395,7 +395,6 @@
         };
         reader.readAsText(file, 'UTF-8');
     }
-
 
     // ====== 下載 PNG ======
     function downloadPNG() {
@@ -415,18 +414,9 @@
         }
     }
 
-    function drawChart(labels, datasets) {
+    function drawChart(labels, datasets, colors) {
         clearChart();
         const ctx = $('#chartCanvas').getContext('2d');
-        const rootStyles = getComputedStyle(document.documentElement);
-        const chartGridColor = rootStyles.getPropertyValue('--chart-grid').trim();
-        const chartTextColor = rootStyles.getPropertyValue('--chart-text').trim();
-        const tooltipBgColor = rootStyles.getPropertyValue('--panel-2').trim();
-        const tooltipTitleColor = rootStyles.getPropertyValue('--text').trim();
-        const tooltipBodyColor = rootStyles.getPropertyValue('--muted').trim();
-        const tooltipBorderColor = rootStyles.getPropertyValue('--border').trim();
-
-
         chart = new Chart(ctx, {
             type: 'line',
             data: { labels, datasets },
@@ -434,40 +424,31 @@
                 responsive: true,
                 maintainAspectRatio: false,
                 layout: {
-                    padding: {
-                        left: 10,
-                        right: 20,
-                        top: 20,
-                        bottom: 10
-                    }
+                    padding: { left: 10, right: 20, top: 20, bottom: 10 }
                 },
                 plugins: {
                     legend: {
                         position: 'bottom',
                         labels: { 
                             boxWidth: 15,
-                            color: chartTextColor,
+                            color: colors.text,
                             font: { size: 12 }
                         }
                     },
                     tooltip: {
                         mode: 'index',
                         intersect: false,
-                        backgroundColor: tooltipBgColor,
-                        titleColor: tooltipTitleColor,
-                        bodyColor: tooltipBodyColor,
-                        borderColor: tooltipBorderColor,
+                        backgroundColor: colors.tooltipBg,
+                        titleColor: colors.tooltipTitle,
+                        bodyColor: colors.tooltipBody,
+                        borderColor: colors.tooltipBorder,
                         borderWidth: 1,
                         padding: 10,
                         callbacks: {
                             label: function(context) {
                                 let label = context.dataset.label || '';
-                                if (label) {
-                                    label += ': ';
-                                }
-                                if (context.parsed.y !== null) {
-                                    label += round2(context.parsed.y) + '%';
-                                }
+                                if (label) { label += ': '; }
+                                if (context.parsed.y !== null) { label += round2(context.parsed.y) + '%'; }
                                 return label;
                             }
                         }
@@ -476,24 +457,22 @@
                 scales: {
                     x: {
                         grid: { 
-                            color: chartGridColor,
+                            color: colors.grid,
                             drawTicks: false
                         },
-                        ticks: { color: chartTextColor },
-                        title: { display: true, text: '時間點', color: chartTextColor }
+                        ticks: { color: colors.text },
+                        title: { display: true, text: '時間點', color: colors.text }
                     },
                     y: {
                         grid: { 
-                            color: chartGridColor,
-                            zeroLineColor: chartGridColor 
+                            color: colors.grid,
+                            zeroLineColor: colors.grid 
                         },
                         ticks: { 
-                            color: chartTextColor,
-                            callback: function(value) {
-                                return value + '%';
-                            }
+                            color: colors.text,
+                            callback: function(value) { return value + '%'; }
                         },
-                        title: { display: true, text: '防治率 (%)', color: chartTextColor },
+                        title: { display: true, text: '防治率 (%)', color: colors.text },
                         suggestedMin: -10,
                         suggestedMax: 110
                     }
@@ -513,7 +492,7 @@
             for (let r = 1; r <= R; r++) $('#ctrl_' + i + '_' + r).value = Math.max(0, Math.round(baseCtrl + (Math.random() * 6 - 3)));
             for (let t = 1; t <= T; t++) {
                 for (let r = 1; r <= R; r++) {
-                    const drift = (t * 3) + (i * 0.6); // 隨時間與處理強度略增
+                    const drift = (t * 3) + (i * 0.6);
                     const val = Math.max(0, Math.round(baseCtrl - drift + (Math.random() * 6 - 3)));
                     $('#t' + t + '_' + i + '_' + r).value = val;
                 }
@@ -531,27 +510,22 @@
         $('#fileInput').addEventListener('change', importCSV);
         $('#btnCSV').addEventListener('click', exportCSV);
         $('#btnPNG').addEventListener('click', downloadPNG);
-
         $('#treatments').addEventListener('change', buildTreatmentNames);
 
         $('#themeToggle').addEventListener('click', () => {
             document.body.classList.toggle('light-mode');
             localStorage.setItem('theme', document.body.classList.contains('light-mode') ? 'light' : 'dark');
-            // Re-draw chart with new theme colors
             if (window.__calcCache) {
-                drawChart(window.__calcCache.labels, window.__calcCache.datasets);
+                drawChart(window.__calcCache.labels, window.__calcCache.datasets, getChartColors());
             }
         });
 
-        // Check for saved theme preference
         const savedTheme = localStorage.getItem('theme');
         if (savedTheme === 'dark') {
             document.body.classList.remove('light-mode');
         } else {
             document.body.classList.add('light-mode');
         }
-
-        // 預設先建一份表格以免使用者看不到輸入區
         buildInputs();
     });
   </script>
