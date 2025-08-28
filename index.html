@@ -411,221 +411,337 @@ function downloadDemoCSV() {
         const N = parseInt($('#timepoints').value) || 1;
         const prefix = ($('#tpPrefix').value || '').trim();
         
-        let yPos = 20;
+        let yPos = 15;
         const pageHeight = 297;
-        const margin = 20;
-        const lineHeight = 6;
+        const margin = 15;
+        const lineHeight = 5;
         
-        // 標題 (使用英文避免亂碼)
-        doc.setFontSize(20);
-        doc.setTextColor(34, 139, 34);
-        doc.text('Control Efficacy Analysis Report', margin, yPos);
-        yPos += 12;
+        // === 封面設計 ===
+        // 背景裝飾
+        doc.setFillColor(34, 139, 34);
+        doc.rect(0, 0, 210, 25, 'F');
+        
+        // 主標題
+        doc.setFontSize(22);
+        doc.setTextColor(255, 255, 255);
+        doc.text('CONTROL EFFICACY ANALYSIS', margin, 18);
+        
+        yPos = 35;
         doc.setFontSize(16);
+        doc.setTextColor(34, 139, 34);
         doc.text('Prevention Efficacy Calculator Report', margin, yPos);
+        
+        // 分隔線
+        doc.setDrawColor(34, 139, 34);
+        doc.setLineWidth(1);
+        doc.line(margin, yPos + 5, 195, yPos + 5);
         
         yPos += 20;
         doc.setFontSize(10);
         doc.setTextColor(100, 100, 100);
-        doc.text(`Generated: ${new Date().toLocaleString('en-US')}`, margin, yPos);
+        doc.text(`Report Generated: ${new Date().toLocaleString('en-US')}`, margin, yPos);
         
-        yPos += 15;
+        yPos += 25;
         
-        // 實驗參數表格
+        // === 實驗參數區塊 ===
+        doc.setFillColor(248, 249, 250);
+        doc.roundedRect(margin, yPos - 5, 180, 35, 3, 3, 'F');
+        
         doc.setFontSize(14);
         doc.setTextColor(0, 0, 0);
-        doc.text('Experimental Design Parameters', margin, yPos);
-        yPos += 8;
+        doc.text('EXPERIMENTAL DESIGN', margin + 5, yPos + 5);
         
+        yPos += 12;
         doc.setFontSize(10);
         const params = [
-            [`Number of Treatments:`, `${T}`],
-            [`Number of Replicates:`, `${R}`],
-            [`Number of Time Points:`, `${N}`],
-            [`Time Point Prefix:`, `${prefix || 'None'}`]
+            [`Treatments:`, `${T} groups`],
+            [`Replicates:`, `${R} per group`],
+            [`Time Points:`, `${N} measurements`],
+            [`Time Prefix:`, `${prefix || 'None'}`]
         ];
         
-        params.forEach(([key, value]) => {
-            doc.text(key, margin, yPos);
-            doc.text(value, margin + 80, yPos);
-            yPos += lineHeight;
-        });
-        
-        yPos += 5;
-        
-        // 處理組名稱
-        doc.setFontSize(12);
-        doc.text('Treatment Names:', margin, yPos);
-        yPos += 8;
-        
-        doc.setFontSize(10);
-        names.forEach((name, i) => {
-            // 使用英文化的名稱避免亂碼
-            const englishName = name.replace(/處理/g, 'Treatment').replace(/對照/g, 'Control');
-            doc.text(`• Treatment ${i + 1}: ${englishName}`, margin + 5, yPos);
-            yPos += lineHeight;
-        });
-        
-        yPos += 10;
-        
-        // 添加圖表
-        if (chart) {
-            doc.setFontSize(14);
-            doc.text('Efficacy Chart', margin, yPos);
-            yPos += 10;
+        // 參數以兩欄方式排列
+        params.forEach(([key, value], index) => {
+            const col = index % 2;
+            const row = Math.floor(index / 2);
+            const xOffset = col * 90;
+            const yOffset = row * 8;
             
-            try {
-                const chartCanvas = document.getElementById('chartCanvas');
-                const chartImage = chartCanvas.toDataURL('image/png', 0.8);
-                
-                const chartWidth = 160;
-                const chartHeight = 80;
-                
-                if (yPos + chartHeight > pageHeight - margin) {
-                    doc.addPage();
-                    yPos = margin;
-                }
-                
-                doc.addImage(chartImage, 'PNG', margin, yPos, chartWidth, chartHeight);
-                yPos += chartHeight + 15;
-            } catch (error) {
-                console.warn('Cannot add chart to PDF:', error);
-                doc.setFontSize(10);
-                doc.setTextColor(150, 150, 150);
-                doc.text('Chart could not be embedded', margin, yPos);
-                yPos += 10;
-            }
-        }
+            doc.setTextColor(80, 80, 80);
+            doc.text(key, margin + 10 + xOffset, yPos + yOffset);
+            doc.setTextColor(0, 0, 0);
+            doc.text(value, margin + 45 + xOffset, yPos + yOffset);
+        });
         
-        // 檢查是否需要新頁面
-        if (yPos > pageHeight - 60) {
-            doc.addPage();
-            yPos = margin;
-        }
+        yPos += 35;
         
-        // 統計結果表格
+        // === 處理組資訊 ===
         doc.setFontSize(14);
         doc.setTextColor(0, 0, 0);
-        doc.text('Statistical Results', margin, yPos);
-        yPos += 10;
+        doc.text('TREATMENT GROUPS', margin, yPos);
         
-        // 表格標題
-        doc.setFontSize(8);
-        doc.setTextColor(0, 0, 0);
-        const headers = ['Time', 'Ctrl Avg', 'Ctrl CV%'];
-        names.forEach((name, i) => {
-            const shortName = `T${i + 1}`;
-            headers.push(`${shortName} Eff%`, `CV%`);
-        });
-        
-        let xPos = margin;
-        headers.forEach((header, i) => {
-            const colWidth = i === 0 ? 20 : 22;
-            doc.text(header, xPos, yPos);
-            xPos += colWidth;
-        });
         yPos += 8;
+        doc.setFontSize(10);
         
-        // 畫分隔線
-        doc.setDrawColor(200, 200, 200);
-        doc.line(margin, yPos - 2, 190, yPos - 2);
+        // 處理組以網格方式排列
+        names.forEach((name, i) => {
+            const col = i % 3;
+            const row = Math.floor(i / 3);
+            const xOffset = col * 60;
+            const yOffset = row * 12;
+            
+            // 處理組標籤背景
+            doc.setFillColor(34, 139, 34);
+            doc.roundedRect(margin + xOffset, yPos + yOffset - 2, 8, 6, 1, 1, 'F');
+            
+            doc.setTextColor(255, 255, 255);
+            doc.setFontSize(8);
+            doc.text(`T${i + 1}`, margin + xOffset + 1, yPos + yOffset + 2);
+            
+            doc.setTextColor(0, 0, 0);
+            doc.setFontSize(10);
+            const englishName = name.replace(/處理/g, 'Treatment').replace(/對照/g, 'Control');
+            doc.text(englishName, margin + xOffset + 12, yPos + yOffset + 2);
+            
+            if (yOffset + yPos > pageHeight - 50) {
+                doc.addPage();
+                yPos = margin;
+            }
+        });
         
-        // 數據行
-        for (let i = 0; i < Math.min(N, 20); i++) {
-            if (yPos > pageHeight - 30) {
+        yPos += Math.ceil(names.length / 3) * 12 + 15;
+        
+        // === 圖表區塊 ===
+        if (chart) {
+            // 檢查是否需要新頁面
+            if (yPos > pageHeight - 100) {
                 doc.addPage();
                 yPos = margin;
             }
             
-            xPos = margin;
+            doc.setFontSize(14);
+            doc.setTextColor(0, 0, 0);
+            doc.text('EFFICACY TRENDS', margin, yPos);
             
-            // 時間點 (移除中文)
+            yPos += 8;
+            
+            try {
+                const chartCanvas = document.getElementById('chartCanvas');
+                const chartImage = chartCanvas.toDataURL('image/png', 1.0);
+                
+                // 圖表框架
+                doc.setDrawColor(200, 200, 200);
+                doc.setLineWidth(0.5);
+                doc.roundedRect(margin, yPos, 180, 100, 2, 2, 'S');
+                
+                // 嵌入圖表
+                doc.addImage(chartImage, 'PNG', margin + 2, yPos + 2, 176, 96);
+                yPos += 105;
+                
+            } catch (error) {
+                console.warn('Cannot add chart to PDF:', error);
+                doc.setFontSize(10);
+                doc.setTextColor(150, 150, 150);
+                doc.text('Chart embedding failed - see digital version', margin, yPos);
+                yPos += 10;
+            }
+        }
+        
+        // === 統計結果表格 (新頁面) ===
+        doc.addPage();
+        yPos = margin;
+        
+        // 表格標題區
+        doc.setFillColor(34, 139, 34);
+        doc.rect(0, 0, 210, 20, 'F');
+        doc.setFontSize(16);
+        doc.setTextColor(255, 255, 255);
+        doc.text('STATISTICAL RESULTS', margin, 15);
+        
+        yPos = 30;
+        
+        // 表格設計
+        const colWidth = Math.min(25, 160 / (3 + T * 2));
+        const tableWidth = (3 + T * 2) * colWidth;
+        
+        // 表格標題背景
+        doc.setFillColor(240, 240, 240);
+        doc.rect(margin, yPos, tableWidth, 12, 'F');
+        
+        // 表格邊框
+        doc.setDrawColor(180, 180, 180);
+        doc.setLineWidth(0.3);
+        doc.rect(margin, yPos, tableWidth, 12, 'S');
+        
+        // 表格標題
+        doc.setFontSize(8);
+        doc.setTextColor(0, 0, 0);
+        const headers = ['Time Point', 'Control Avg', 'Control CV%'];
+        names.forEach((name, i) => {
+            const shortName = `T${i + 1}`;
+            headers.push(`${shortName} Eff%`, `${shortName} CV%`);
+        });
+        
+        let xPos = margin + 2;
+        headers.forEach((header, i) => {
+            doc.text(header, xPos, yPos + 8);
+            xPos += colWidth;
+            // 垂直分隔線
+            if (i < headers.length - 1) {
+                doc.line(xPos - 2, yPos, xPos - 2, yPos + 12);
+            }
+        });
+        
+        yPos += 12;
+        
+        // 數據行
+        const maxRows = Math.min(N, 25);
+        for (let i = 0; i < maxRows; i++) {
+            // 交替行背景
+            if (i % 2 === 1) {
+                doc.setFillColor(248, 249, 250);
+                doc.rect(margin, yPos, tableWidth, 8, 'F');
+            }
+            
+            // 行邊框
+            doc.setDrawColor(220, 220, 220);
+            doc.rect(margin, yPos, tableWidth, 8, 'S');
+            
+            xPos = margin + 2;
+            doc.setFontSize(7);
+            doc.setTextColor(0, 0, 0);
+            
+            // 時間點
             const timeLabel = labels[i] || `${i + 1}`;
-            const englishTimeLabel = timeLabel.replace(/月/g, 'M').replace(/週/g, 'W').replace(/天/g, 'D');
-            doc.text(englishTimeLabel, xPos, yPos);
-            xPos += 20;
+            const englishTimeLabel = timeLabel.replace(/月/g, 'M').replace(/週/g, 'W').replace(/天/g, 'D').replace(/日/g, 'D');
+            doc.text(englishTimeLabel, xPos, yPos + 5);
+            xPos += colWidth;
             
             // 對照組數據
-            doc.text(isFinite(stats.ctrlAvg[i]) ? round2(stats.ctrlAvg[i]).toString() : '-', xPos, yPos);
-            xPos += 22;
-            doc.text(isFinite(stats.ctrlCv[i]) ? round1(stats.ctrlCv[i]).toString() : '-', xPos, yPos);
-            xPos += 22;
+            doc.text(isFinite(stats.ctrlAvg[i]) ? round2(stats.ctrlAvg[i]).toString() : '-', xPos, yPos + 5);
+            xPos += colWidth;
+            doc.text(isFinite(stats.ctrlCv[i]) ? round1(stats.ctrlCv[i]).toString() + '%' : '-', xPos, yPos + 5);
+            xPos += colWidth;
             
-            // 各處理組數據
-            for (let t = 0; t < T && t < 4; t++) {
+            // 處理組數據
+            for (let t = 0; t < T; t++) {
                 const eff = stats.eff[t][i];
                 const effText = (eff !== null && isFinite(eff)) ? round2(eff).toString() : '-';
                 const significant = stats.isSignificant[t][i] ? '*' : '';
                 
-                doc.text(effText + significant, xPos, yPos);
-                xPos += 22;
-                doc.text(isFinite(stats.trCv[t][i]) ? round1(stats.trCv[t][i]).toString() : '-', xPos, yPos);
-                xPos += 22;
+                // 顯著性用紅色標記
+                if (significant) {
+                    doc.setTextColor(220, 20, 20);
+                    doc.text(effText + '*', xPos, yPos + 5);
+                    doc.setTextColor(0, 0, 0);
+                } else {
+                    doc.text(effText, xPos, yPos + 5);
+                }
+                xPos += colWidth;
+                
+                doc.text(isFinite(stats.trCv[t][i]) ? round1(stats.trCv[t][i]).toString() + '%' : '-', xPos, yPos + 5);
+                xPos += colWidth;
+                
+                // 垂直分隔線
+                doc.setDrawColor(220, 220, 220);
+                doc.line(xPos - 2, yPos, xPos - 2, yPos + 8);
             }
-            yPos += 5;
+            
+            yPos += 8;
         }
         
-        // 如果數據太多，顯示省略信息
-        if (N > 20) {
+        // 資料省略提示
+        if (N > maxRows) {
             yPos += 5;
             doc.setFontSize(8);
-            doc.setTextColor(150, 150, 150);
-            doc.text(`... and ${N - 20} more time points (see CSV export for complete data)`, margin, yPos);
+            doc.setTextColor(120, 120, 120);
+            doc.text(`... ${N - maxRows} additional time points omitted (see CSV export for complete data)`, margin, yPos);
         }
         
-        // 新頁面 - 統計摘要
+        // === 統計摘要 (新頁面) ===
         doc.addPage();
         yPos = margin;
         
-        doc.setFontSize(14);
-        doc.setTextColor(0, 0, 0);
-        doc.text('Summary Statistics', margin, yPos);
-        yPos += 15;
+        // 摘要標題
+        doc.setFillColor(34, 139, 34);
+        doc.rect(0, 0, 210, 20, 'F');
+        doc.setFontSize(16);
+        doc.setTextColor(255, 255, 255);
+        doc.text('SUMMARY STATISTICS', margin, 15);
         
-        doc.setFontSize(10);
-        for (let t = 0; t < T; t++) {
+        yPos = 35;
+        
+        // 每個處理組的摘要卡片
+        names.forEach((name, t) => {
             const validEffs = stats.eff[t].filter(e => e !== null && isFinite(e));
             const significantCount = stats.isSignificant[t].filter(Boolean).length;
             
             if (validEffs.length > 0) {
-                doc.setTextColor(34, 139, 34);
-                const treatmentName = names[t].replace(/處理/g, 'Treatment').replace(/對照/g, 'Control');
-                doc.text(`${treatmentName}:`, margin, yPos);
-                yPos += 8;
+                // 卡片背景
+                doc.setFillColor(248, 249, 250);
+                doc.roundedRect(margin, yPos - 3, 180, 35, 3, 3, 'F');
                 
+                // 卡片邊框
+                doc.setDrawColor(34, 139, 34);
+                doc.setLineWidth(0.5);
+                doc.roundedRect(margin, yPos - 3, 180, 35, 3, 3, 'S');
+                
+                // 處理組標題
+                doc.setFontSize(12);
+                doc.setTextColor(34, 139, 34);
+                const treatmentName = name.replace(/處理/g, 'Treatment').replace(/對照/g, 'Control');
+                doc.text(`${treatmentName} (T${t + 1})`, margin + 8, yPos + 5);
+                
+                // 統計數據 (兩欄排列)
+                doc.setFontSize(9);
                 doc.setTextColor(0, 0, 0);
-                doc.text(`• Average Efficacy: ${round2(validEffs.reduce((a, b) => a + b, 0) / validEffs.length)}%`, margin + 5, yPos);
-                yPos += 6;
-                doc.text(`• Maximum Efficacy: ${round2(Math.max(...validEffs))}%`, margin + 5, yPos);
-                yPos += 6;
-                doc.text(`• Minimum Efficacy: ${round2(Math.min(...validEffs))}%`, margin + 5, yPos);
-                yPos += 6;
-                doc.text(`• Significant Time Points: ${significantCount}/${N}`, margin + 5, yPos);
-                yPos += 12;
+                
+                const stats_data = [
+                    [`Average Efficacy:`, `${round2(validEffs.reduce((a, b) => a + b, 0) / validEffs.length)}%`],
+                    [`Maximum Efficacy:`, `${round2(Math.max(...validEffs))}%`],
+                    [`Minimum Efficacy:`, `${round2(Math.min(...validEffs))}%`],
+                    [`Significant Points:`, `${significantCount}/${N} (${round1(significantCount/N*100)}%)`]
+                ];
+                
+                stats_data.forEach(([label, value], index) => {
+                    const col = index % 2;
+                    const row = Math.floor(index / 2);
+                    const xOffset = col * 90;
+                    const yOffset = row * 8;
+                    
+                    doc.setTextColor(80, 80, 80);
+                    doc.text(label, margin + 12 + xOffset, yPos + 12 + yOffset);
+                    doc.setTextColor(0, 0, 0);
+                    doc.text(value, margin + 55 + xOffset, yPos + 12 + yOffset);
+                });
+                
+                yPos += 40;
             }
-        }
+        });
         
-        // 備註
+        // === 備註區塊 ===
         yPos += 10;
+        
+        doc.setFillColor(240, 248, 255);
+        doc.roundedRect(margin, yPos - 3, 180, 45, 3, 3, 'F');
+        
         doc.setFontSize(12);
-        doc.setTextColor(0, 0, 0);
-        doc.text('Notes:', margin, yPos);
-        yPos += 10;
+        doc.setTextColor(0, 100, 200);
+        doc.text('METHODOLOGY & NOTES', margin + 8, yPos + 8);
         
-        doc.setFontSize(9);
-        doc.setTextColor(80, 80, 80);
+        doc.setFontSize(8);
+        doc.setTextColor(60, 60, 60);
         const notes = [
-            '• Data transformation: (X + 0.5)^(1/2)',
-            '• Efficacy formula: (1 - Treatment_avg / Control_avg) × 100',
-            '• * indicates significant difference (p < 0.05)',
-            '• CV% = Standard Deviation / Mean × 100%',
-            '• Ctrl = Control group, T1/T2/T3 = Treatment groups',
-            '• Time labels: M=Month, W=Week, D=Day'
+            '• Data Transformation: Square root transformation (X + 0.5)^0.5 applied to all raw counts',
+            '• Efficacy Calculation: (1 - Treatment_mean / Control_mean) × 100%',
+            '• Statistical Test: Two-sample t-test performed for each time point',
+            '• Significance Level: p < 0.05 (marked with * in red)',
+            '• CV% = Coefficient of Variation = (Standard Deviation / Mean) × 100%',
+            '• Legend: T1, T2, T3... = Treatment groups; Eff% = Efficacy percentage'
         ];
         
-        notes.forEach(note => {
-            doc.text(note, margin, yPos);
-            yPos += 6;
+        notes.forEach((note, index) => {
+            doc.text(note, margin + 12, yPos + 18 + (index * 5));
         });
         
         // 保存PDF
