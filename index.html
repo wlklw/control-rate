@@ -404,9 +404,6 @@ function downloadDemoCSV() {
         const { jsPDF } = window.jspdf;
         const doc = new jsPDF('p', 'mm', 'a4');
         
-        // 設定中文字體支援
-        doc.addFont('https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.1.36/fonts/Roboto/Roboto-Regular.ttf', 'Roboto', 'normal');
-        
         const { labels, stats } = cache;
         const names = getTreatmentNames();
         const T = parseInt($('#treatments').value) || 1;
@@ -419,31 +416,33 @@ function downloadDemoCSV() {
         const margin = 20;
         const lineHeight = 6;
         
-        // 標題
+        // 標題 (使用英文避免亂碼)
         doc.setFontSize(20);
         doc.setTextColor(34, 139, 34);
         doc.text('Control Efficacy Analysis Report', margin, yPos);
-        doc.text('防治效果分析報告', margin, yPos + 8);
+        yPos += 12;
+        doc.setFontSize(16);
+        doc.text('Prevention Efficacy Calculator Report', margin, yPos);
         
         yPos += 20;
         doc.setFontSize(10);
         doc.setTextColor(100, 100, 100);
-        doc.text(`Generated: ${new Date().toLocaleString('zh-TW')}`, margin, yPos);
+        doc.text(`Generated: ${new Date().toLocaleString('en-US')}`, margin, yPos);
         
         yPos += 15;
         
         // 實驗參數表格
         doc.setFontSize(14);
         doc.setTextColor(0, 0, 0);
-        doc.text('Experimental Design / 實驗設計', margin, yPos);
+        doc.text('Experimental Design Parameters', margin, yPos);
         yPos += 8;
         
         doc.setFontSize(10);
         const params = [
-            [`Treatments / 處理組數量:`, `${T}`],
-            [`Replicates / 重複數:`, `${R}`],
-            [`Time Points / 時間點數量:`, `${N}`],
-            [`Time Prefix / 時間點前綴:`, `${prefix || 'None/無'}`]
+            [`Number of Treatments:`, `${T}`],
+            [`Number of Replicates:`, `${R}`],
+            [`Number of Time Points:`, `${N}`],
+            [`Time Point Prefix:`, `${prefix || 'None'}`]
         ];
         
         params.forEach(([key, value]) => {
@@ -456,12 +455,14 @@ function downloadDemoCSV() {
         
         // 處理組名稱
         doc.setFontSize(12);
-        doc.text('Treatment Names / 處理組名稱:', margin, yPos);
+        doc.text('Treatment Names:', margin, yPos);
         yPos += 8;
         
         doc.setFontSize(10);
         names.forEach((name, i) => {
-            doc.text(`• Treatment ${i + 1}: ${name}`, margin + 5, yPos);
+            // 使用英文化的名稱避免亂碼
+            const englishName = name.replace(/處理/g, 'Treatment').replace(/對照/g, 'Control');
+            doc.text(`• Treatment ${i + 1}: ${englishName}`, margin + 5, yPos);
             yPos += lineHeight;
         });
         
@@ -470,14 +471,13 @@ function downloadDemoCSV() {
         // 添加圖表
         if (chart) {
             doc.setFontSize(14);
-            doc.text('Efficacy Chart / 防治率圖表', margin, yPos);
+            doc.text('Efficacy Chart', margin, yPos);
             yPos += 10;
             
             try {
                 const chartCanvas = document.getElementById('chartCanvas');
                 const chartImage = chartCanvas.toDataURL('image/png', 0.8);
                 
-                // 計算圖表尺寸以適應頁面
                 const chartWidth = 160;
                 const chartHeight = 80;
                 
@@ -492,7 +492,7 @@ function downloadDemoCSV() {
                 console.warn('Cannot add chart to PDF:', error);
                 doc.setFontSize(10);
                 doc.setTextColor(150, 150, 150);
-                doc.text('Chart could not be embedded / 圖表無法嵌入', margin, yPos);
+                doc.text('Chart could not be embedded', margin, yPos);
                 yPos += 10;
             }
         }
@@ -506,20 +506,21 @@ function downloadDemoCSV() {
         // 統計結果表格
         doc.setFontSize(14);
         doc.setTextColor(0, 0, 0);
-        doc.text('Statistical Results / 統計結果', margin, yPos);
+        doc.text('Statistical Results', margin, yPos);
         yPos += 10;
         
         // 表格標題
         doc.setFontSize(8);
         doc.setTextColor(0, 0, 0);
-        const headers = ['Time', 'Control Avg', 'Control CV%'];
-        names.forEach(name => {
-            headers.push(`${name} Eff%`, `CV%`);
+        const headers = ['Time', 'Ctrl Avg', 'Ctrl CV%'];
+        names.forEach((name, i) => {
+            const shortName = `T${i + 1}`;
+            headers.push(`${shortName} Eff%`, `CV%`);
         });
         
         let xPos = margin;
         headers.forEach((header, i) => {
-            const colWidth = i === 0 ? 20 : 25;
+            const colWidth = i === 0 ? 20 : 22;
             doc.text(header, xPos, yPos);
             xPos += colWidth;
         });
@@ -530,7 +531,7 @@ function downloadDemoCSV() {
         doc.line(margin, yPos - 2, 190, yPos - 2);
         
         // 數據行
-        for (let i = 0; i < Math.min(N, 15); i++) { // 限制行數避免超出頁面
+        for (let i = 0; i < Math.min(N, 20); i++) {
             if (yPos > pageHeight - 30) {
                 doc.addPage();
                 yPos = margin;
@@ -538,37 +539,38 @@ function downloadDemoCSV() {
             
             xPos = margin;
             
-            // 時間點
-            doc.text(labels[i] || `${i + 1}`, xPos, yPos);
+            // 時間點 (移除中文)
+            const timeLabel = labels[i] || `${i + 1}`;
+            const englishTimeLabel = timeLabel.replace(/月/g, 'M').replace(/週/g, 'W').replace(/天/g, 'D');
+            doc.text(englishTimeLabel, xPos, yPos);
             xPos += 20;
             
             // 對照組數據
             doc.text(isFinite(stats.ctrlAvg[i]) ? round2(stats.ctrlAvg[i]).toString() : '-', xPos, yPos);
-            xPos += 25;
+            xPos += 22;
             doc.text(isFinite(stats.ctrlCv[i]) ? round1(stats.ctrlCv[i]).toString() : '-', xPos, yPos);
-            xPos += 25;
+            xPos += 22;
             
             // 各處理組數據
-            for (let t = 0; t < T && t < 3; t++) { // 限制處理組數量避免超出頁寬
+            for (let t = 0; t < T && t < 4; t++) {
                 const eff = stats.eff[t][i];
                 const effText = (eff !== null && isFinite(eff)) ? round2(eff).toString() : '-';
                 const significant = stats.isSignificant[t][i] ? '*' : '';
                 
                 doc.text(effText + significant, xPos, yPos);
-                xPos += 25;
+                xPos += 22;
                 doc.text(isFinite(stats.trCv[t][i]) ? round1(stats.trCv[t][i]).toString() : '-', xPos, yPos);
-                xPos += 25;
+                xPos += 22;
             }
-            yPos += 6;
+            yPos += 5;
         }
         
         // 如果數據太多，顯示省略信息
-        if (N > 15) {
+        if (N > 20) {
             yPos += 5;
             doc.setFontSize(8);
             doc.setTextColor(150, 150, 150);
-            doc.text(`... and ${N - 15} more time points (see CSV export for complete data)`, margin, yPos);
-            doc.text(`... 還有 ${N - 15} 個時間點 (完整數據請參閱CSV匯出)`, margin, yPos + 4);
+            doc.text(`... and ${N - 20} more time points (see CSV export for complete data)`, margin, yPos);
         }
         
         // 新頁面 - 統計摘要
@@ -577,7 +579,7 @@ function downloadDemoCSV() {
         
         doc.setFontSize(14);
         doc.setTextColor(0, 0, 0);
-        doc.text('Summary Statistics / 統計摘要', margin, yPos);
+        doc.text('Summary Statistics', margin, yPos);
         yPos += 15;
         
         doc.setFontSize(10);
@@ -587,17 +589,18 @@ function downloadDemoCSV() {
             
             if (validEffs.length > 0) {
                 doc.setTextColor(34, 139, 34);
-                doc.text(`${names[t]}:`, margin, yPos);
+                const treatmentName = names[t].replace(/處理/g, 'Treatment').replace(/對照/g, 'Control');
+                doc.text(`${treatmentName}:`, margin, yPos);
                 yPos += 8;
                 
                 doc.setTextColor(0, 0, 0);
-                doc.text(`• Average Efficacy / 平均防治率: ${round2(validEffs.reduce((a, b) => a + b, 0) / validEffs.length)}%`, margin + 5, yPos);
+                doc.text(`• Average Efficacy: ${round2(validEffs.reduce((a, b) => a + b, 0) / validEffs.length)}%`, margin + 5, yPos);
                 yPos += 6;
-                doc.text(`• Max Efficacy / 最高防治率: ${round2(Math.max(...validEffs))}%`, margin + 5, yPos);
+                doc.text(`• Maximum Efficacy: ${round2(Math.max(...validEffs))}%`, margin + 5, yPos);
                 yPos += 6;
-                doc.text(`• Min Efficacy / 最低防治率: ${round2(Math.min(...validEffs))}%`, margin + 5, yPos);
+                doc.text(`• Minimum Efficacy: ${round2(Math.min(...validEffs))}%`, margin + 5, yPos);
                 yPos += 6;
-                doc.text(`• Significant Points / 顯著差異點: ${significantCount}/${N}`, margin + 5, yPos);
+                doc.text(`• Significant Time Points: ${significantCount}/${N}`, margin + 5, yPos);
                 yPos += 12;
             }
         }
@@ -606,17 +609,18 @@ function downloadDemoCSV() {
         yPos += 10;
         doc.setFontSize(12);
         doc.setTextColor(0, 0, 0);
-        doc.text('Notes / 備註:', margin, yPos);
+        doc.text('Notes:', margin, yPos);
         yPos += 10;
         
         doc.setFontSize(9);
         doc.setTextColor(80, 80, 80);
         const notes = [
-            '• Data transformation: (X + 0.5)^(1/2) / 數據轉換: (X + 0.5)^(1/2)',
+            '• Data transformation: (X + 0.5)^(1/2)',
             '• Efficacy formula: (1 - Treatment_avg / Control_avg) × 100',
-            '  防治率公式: (1 - 處理組平均 / 對照組平均) × 100',
-            '• * indicates significant difference (p < 0.05) / * 表示顯著差異 (p < 0.05)',
-            '• CV% = Standard Deviation / Mean × 100% / 變異係數% = 標準差 / 平均 × 100%'
+            '• * indicates significant difference (p < 0.05)',
+            '• CV% = Standard Deviation / Mean × 100%',
+            '• Ctrl = Control group, T1/T2/T3 = Treatment groups',
+            '• Time labels: M=Month, W=Week, D=Day'
         ];
         
         notes.forEach(note => {
@@ -625,7 +629,7 @@ function downloadDemoCSV() {
         });
         
         // 保存PDF
-        doc.save('防治效果分析報告.pdf');
+        doc.save('Control-Efficacy-Analysis-Report.pdf');
     }
     function exportCSV() {
         const cache = window.__calcCache;
@@ -654,7 +658,7 @@ function downloadDemoCSV() {
         URL.revokeObjectURL(a.href);
     }
     
-    function importCSV(e) {
+   function importCSV(e) {
         const file = e.target.files[0];
         if (!file) return;
         
@@ -665,7 +669,7 @@ function downloadDemoCSV() {
                 const lines = text.split('\n').map(line => line.trim()).filter(line => line !== '');
                 
                 if (lines.length < 2) {
-                    alert('CSV 格式錯誤，請確保檔案包含標題和至少一行數據。');
+                    alert('CSV 格式錯誤，請確保檔案包含標題行和至少一行數據。');
                     return;
                 }
                 
@@ -673,106 +677,130 @@ function downloadDemoCSV() {
                 const dataRows = lines.slice(1).map(line => line.split(',').map(cell => cell.trim()));
                 
                 console.log('Header:', header);
-                console.log('Data rows:', dataRows.slice(0, 3)); // 只顯示前3行用於調試
+                console.log('Sample data:', dataRows.slice(0, 3));
                 
-                // 分析標題結構來確定參數
+                // 更寬鬆的格式檢測
+                if (header.length < 4) {
+                    alert('CSV檔案欄位數量太少，至少需要時間點+對照+處理組欄位。');
+                    return;
+                }
+                
+                // 彈性檢測對照組欄位 (支援多種命名)
                 let controlCols = 0;
-                let treatmentGroups = 0;
-                let replicatesPerGroup = 0;
+                const controlKeywords = ['對照', 'control', 'Control', 'CONTROL', 'ctrl', 'Ctrl', 'CTRL', '空白', 'blank', 'Blank'];
                 
-                // 計算對照組欄位數
                 for (let i = 1; i < header.length; i++) {
-                    if (header[i].includes('對照') || header[i].includes('control') || header[i].includes('Control')) {
+                    const headerText = header[i].toLowerCase();
+                    const isControl = controlKeywords.some(keyword => 
+                        headerText.includes(keyword.toLowerCase()) || 
+                        headerText.includes('ck') || 
+                        headerText.match(/^(c|ck)\d*[-_]/)
+                    );
+                    
+                    if (isControl) {
                         controlCols++;
-                    } else {
+                    } else if (controlCols > 0) {
+                        // 已經找到對照組欄位，現在遇到非對照組欄位，停止計算
                         break;
                     }
                 }
                 
+                // 如果沒找到明確的對照組，假設前面幾欄是對照組
                 if (controlCols === 0) {
-                    alert('找不到對照組欄位，請確保CSV檔案格式正確。');
-                    return;
+                    const totalCols = header.length - 1; // 扣除時間點欄位
+                    if (totalCols >= 3) {
+                        // 假設是 3重複 對照 + N個處理組×3重複 的格式
+                        controlCols = 3;
+                    } else {
+                        controlCols = 1;
+                    }
+                    console.log(`未找到對照組關鍵字，假設前 ${controlCols} 欄為對照組`);
                 }
                 
-                // 計算處理組和重複數
-                const treatmentCols = header.length - 1 - controlCols; // 減去時間點欄位
+                // 計算處理組數量
+                const remainingCols = header.length - 1 - controlCols;
+                let treatmentGroups = 1;
                 
-                // 嘗試從標題推測處理組數量
-                const treatmentNames = new Set();
-                for (let i = controlCols + 1; i < header.length; i++) {
-                    const headerText = header[i];
-                    // 提取處理組名稱 (假設格式是 "處理名-重複X" 或 "處理名-replicateX")
-                    const match = headerText.match(/^(.+?)[-_](?:重複|replicate|rep)\d+/i);
-                    if (match) {
-                        treatmentNames.add(match[1].trim());
+                if (remainingCols > 0) {
+                    // 嘗試檢測處理組數量
+                    if (remainingCols % controlCols === 0) {
+                        treatmentGroups = remainingCols / controlCols;
                     } else {
-                        // 如果沒有標準格式，嘗試其他方法
-                        const parts = headerText.split(/[-_]/);
-                        if (parts.length > 1) {
-                            treatmentNames.add(parts[0].trim());
-                        }
+                        // 不能整除，猜測可能的組合
+                        const possibleGroups = Math.floor(remainingCols / controlCols);
+                        treatmentGroups = Math.max(1, possibleGroups);
                     }
                 }
                 
-                treatmentGroups = Math.max(1, treatmentNames.size);
-                replicatesPerGroup = controlCols; // 假設處理組重複數與對照組相同
+                console.log(`檢測結果: ${controlCols} 對照重複, ${treatmentGroups} 處理組, 每組約 ${Math.floor(remainingCols/treatmentGroups)} 重複`);
                 
-                // 如果無法從標題推測，使用預設值
-                if (treatmentGroups === 1 && treatmentCols > controlCols) {
-                    treatmentGroups = Math.max(1, Math.floor(treatmentCols / controlCols));
+                // 提供用戶確認選項
+                const userConfirm = confirm(
+                    `檢測到的格式：\n` +
+                    `• 對照組重複數：${controlCols}\n` +
+                    `• 處理組數量：${treatmentGroups}\n` +
+                    `• 時間點數量：${dataRows.length}\n\n` +
+                    `是否按此格式匯入？\n` +
+                    `(點擊"取消"可手動調整參數後重新匯入)`
+                );
+                
+                if (!userConfirm) {
+                    alert('匯入已取消。您可以先調整界面上的參數設定，然後重新匯入檔案。');
+                    return;
                 }
                 
-                console.log(`檢測到: ${controlCols} 對照重複, ${treatmentGroups} 處理組, ${replicatesPerGroup} 處理組重複`);
-                
                 // 更新界面參數
-                $('#treatments').value = treatmentGroups;
-                $('#replicates').value = replicatesPerGroup;
+                $('#treatments').value = Math.max(1, treatmentGroups);
+                $('#replicates').value = Math.max(1, controlCols);
                 $('#timepoints').value = dataRows.length;
                 
                 // 重建界面
                 buildInputs();
                 
-                // 填入數據
+                // 填入數據 - 更彈性的方式
                 for (let i = 0; i < dataRows.length; i++) {
                     const rowData = dataRows[i];
-                    if (rowData.length < header.length) continue;
+                    if (rowData.length < 2) continue; // 至少要有時間點+1個數據
                     
                     // 填入對照組數據
-                    for (let r = 1; r <= controlCols; r++) {
+                    for (let r = 1; r <= controlCols && r < rowData.length; r++) {
                         const input = document.querySelector(`#ctrl_${i + 1}_${r}`);
-                        if (input && rowData[r]) {
-                            input.value = rowData[r];
+                        if (input && rowData[r] && rowData[r] !== '') {
+                            // 嘗試轉換為數字
+                            const numValue = parseFloat(rowData[r]);
+                            input.value = isNaN(numValue) ? rowData[r] : numValue;
                         }
                     }
                     
                     // 填入處理組數據
-                    let colIndex = controlCols + 1; // 跳過時間點和對照組欄位
-                    for (let t = 1; t <= treatmentGroups; t++) {
-                        for (let r = 1; r <= replicatesPerGroup; r++) {
+                    let colIndex = controlCols + 1;
+                    const actualTreatments = parseInt($('#treatments').value);
+                    const actualReplicates = parseInt($('#replicates').value);
+                    
+                    for (let t = 1; t <= actualTreatments && colIndex < rowData.length; t++) {
+                        for (let r = 1; r <= actualReplicates && colIndex < rowData.length; r++) {
                             const input = document.querySelector(`#t${t}_${i + 1}_${r}`);
-                            if (input && rowData[colIndex]) {
-                                input.value = rowData[colIndex];
+                            if (input && rowData[colIndex] && rowData[colIndex] !== '') {
+                                const numValue = parseFloat(rowData[colIndex]);
+                                input.value = isNaN(numValue) ? rowData[colIndex] : numValue;
                             }
                             colIndex++;
-                            if (colIndex >= rowData.length) break;
                         }
-                        if (colIndex >= rowData.length) break;
                     }
                 }
                 
-                alert('CSV 檔案匯入成功！');
+                alert(`CSV檔案匯入成功！\n匯入了 ${dataRows.length} 個時間點的數據。`);
                 
             } catch (error) {
                 console.error('Import error:', error);
-                alert('匯入失敗：' + error.message);
+                alert(`匯入失敗：${error.message}\n\n請檢查CSV格式：\n1. 第一行應為標題\n2. 使用逗號分隔\n3. 包含時間點、對照組、處理組欄位`);
             } finally {
-                // 清空檔案選擇器
                 e.target.value = '';
             }
         };
         
         reader.onerror = function() {
-            alert('檔案讀取失敗，請檢查檔案格式。');
+            alert('檔案讀取失敗，請檢查檔案是否損壞。');
         };
         
         reader.readAsText(file, 'UTF-8');
