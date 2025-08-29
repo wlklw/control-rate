@@ -90,10 +90,8 @@
   </style>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/simple-statistics@7.8.3/dist/simple-statistics.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-  
-  <script src="https://raw.githack.com/TA-Dallas/test-font/main/NotoSansTC-Regular-normal.js"></script>
-  </head>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+</head>
 <body class="light-mode">
   <header>
     <h1>防治率計算器 <span class="badge">(X+0.5)½ 轉換 + 圖表</span></h1>
@@ -125,7 +123,7 @@
           <button id="btnDemo" class="ghost">填入示範資料</button>
           <button id="btnCalc" class="primary">計算防治率 & 繪圖</button>
         </div>
-        <div class="button-group">
+<div class="button-group">
           <button id="btnImport" class="ghost">匯入 CSV</button>
           <button id="btnDemoCSV" class="ghost">下載示範 CSV</button>
           <button id="btnCSV" class="ghost">匯出 CSV</button>
@@ -362,498 +360,21 @@
         drawChart(labels, datasets);
         window.__calcCache = { labels, ctrlAvg: stats.ctrlAvg, eff: stats.eff, datasets, stats };
     }
-    
-    // ================== 修改後的 PDF 匯出功能 (已中文化並修復亂碼) ==================
-    function exportReport() {
-        const cache = window.__calcCache;
-        if (!cache) { 
-            alert('請先計算再匯出報告。'); 
-            return; 
-        }
-
-        const { jsPDF } = window.jspdf;
-        const doc = new jsPDF('p', 'mm', 'a4');
-
-        // ================== 關鍵：註冊並設定中文字型 ==================
-        // 1. 宣告字型名稱 (需與載入的 .js 檔內定義的名稱相符)
-        const FONT_NAME = 'NotoSansTC-Regular';
-        
-        // 2. 將字型加入 jsPDF 的虛擬檔案系統 (VFS)
-        //    (callAddFont 函式是由我們在 <head> 中載入的 NotoSansTC-Regular-normal.js 提供的)
-        if (typeof callAddFont === 'function') {
-            callAddFont();
-        } else {
-            alert('中文字型檔載入失敗，無法產生 PDF 報告。');
-            return;
-        }
-
-        // 3. 設定文件使用的字型
-        doc.setFont(FONT_NAME, 'normal');
-        // ========================================================
-
-        const { labels, stats } = cache;
-        const names = getTreatmentNames();
-        const T = parseInt($('#treatments').value) || 1;
-        const R = parseInt($('#replicates').value) || 1;
-        const N = parseInt($('#timepoints').value) || 1;
-        const prefix = ($('#tpPrefix').value || '').trim();
-        
-        let yPos = 15;
-        const pageHeight = 297;
-        const margin = 15;
-        const pageWidth = 210;
-        const contentWidth = pageWidth - (2 * margin);
-        
-        function checkPageBreak(requiredHeight) {
-            if (yPos + requiredHeight > pageHeight - 20) {
-                doc.addPage();
-                doc.setFont(FONT_NAME, 'normal'); // 每新增一頁都要重新設定字型
-                yPos = margin;
-                return true;
-            }
-            return false;
-        }
-        
-        function drawSeparator() {
-            doc.setDrawColor(220, 220, 220);
-            doc.setLineWidth(0.3);
-            doc.line(margin, yPos, pageWidth - margin, yPos);
-            yPos += 5;
-        }
-        
-        // === 封面設計 ===
-        doc.setFillColor(34, 139, 34);
-        doc.rect(0, 0, pageWidth, 30, 'F');
-        doc.setFontSize(22);
-        doc.setTextColor(255, 255, 255);
-        const titleText = '防治率分析報告';
-        const titleWidth = doc.getTextWidth(titleText);
-        doc.text(titleText, (pageWidth - titleWidth) / 2, 20);
-        
-        yPos = 40;
-        
-        doc.setFontSize(16);
-        doc.setTextColor(34, 139, 34);
-        const subtitleText = '試驗數據與統計圖表';
-        const subtitleWidth = doc.getTextWidth(subtitleText);
-        doc.text(subtitleText, (pageWidth - subtitleWidth) / 2, yPos);
-        
-        yPos += 8;
-        doc.setDrawColor(34, 139, 34);
-        doc.setLineWidth(1);
-        const lineStart = (pageWidth - 120) / 2;
-        doc.line(lineStart, yPos, lineStart + 120, yPos);
-        
-        yPos += 15;
-        doc.setFontSize(10);
-        doc.setTextColor(100, 100, 100);
-        const dateText = `報告生成時間：${new Date().toLocaleString('zh-TW')}`;
-        const dateWidth = doc.getTextWidth(dateText);
-        doc.text(dateText, (pageWidth - dateWidth) / 2, yPos);
-        
-        yPos += 25;
-        
-        // === 試驗參數區塊 ===
-        const paramBoxHeight = 40;
-        doc.setFillColor(248, 249, 250);
-        doc.setDrawColor(200, 200, 200);
-        doc.setLineWidth(0.5);
-        doc.roundedRect(margin, yPos - 5, contentWidth, paramBoxHeight, 3, 3, 'FD');
-        
-        doc.setFontSize(14);
-        doc.setTextColor(34, 139, 34);
-        doc.text('試驗設計', margin + 10, yPos + 8);
-        
-        yPos += 18;
-        
-        doc.setFontSize(10);
-        const params = [
-            ['處理組數量：', `${T} 組`],
-            ['重複數：', `${R} 次`],
-            ['時間點數量：', `${N} 個`],
-            ['時間點單位：', `${prefix || '無'}`]
-        ];
-        
-        const cardWidth = (contentWidth - 30) / 2;
-        params.forEach(([key, value], index) => {
-            const col = index % 2;
-            const row = Math.floor(index / 2);
-            const xOffset = col * (cardWidth + 10);
-            const yOffset = row * 10;
-            
-            doc.setTextColor(80, 80, 80);
-            doc.text(key, margin + 15 + xOffset, yPos + yOffset);
-            doc.setTextColor(0, 0, 0);
-            doc.setFont(FONT_NAME, 'bold');
-            doc.text(value, margin + 15 + xOffset + doc.getTextWidth(key + ' '), yPos + yOffset);
-            doc.setFont(FONT_NAME, 'normal');
-        });
-        
-        yPos += 25;
-        
-        // === 處理組資訊 ===
-        checkPageBreak(20 + Math.ceil(names.length / 3) * 12);
-        
-        doc.setFontSize(14);
-        doc.setTextColor(34, 139, 34);
-        doc.text('處理組資訊', margin, yPos);
-        
-        yPos += 10;
-        drawSeparator();
-        
-        doc.setFontSize(10);
-        const groupsPerRow = 3;
-        const groupCardWidth = (contentWidth - 10) / groupsPerRow;
-        
-        names.forEach((name, i) => {
-            const col = i % groupsPerRow;
-            const row = Math.floor(i / groupsPerRow);
-            const xOffset = col * groupCardWidth;
-            const yOffset = row * 12;
-            
-            if (yPos + yOffset > pageHeight - 40) {
-                doc.addPage();
-                doc.setFont(FONT_NAME, 'normal');
-                yPos = margin;
-            }
-            
-            doc.setFillColor(245, 245, 245);
-            doc.setDrawColor(200, 200, 200);
-            doc.setLineWidth(0.3);
-            doc.roundedRect(margin + xOffset, yPos + yOffset, groupCardWidth - 2, 10, 2, 2, 'FD');
-            
-            doc.setFillColor(34, 139, 34);
-            doc.roundedRect(margin + xOffset + 2, yPos + yOffset + 2, 12, 6, 1, 1, 'F');
-            
-            doc.setTextColor(255, 255, 255);
-            doc.setFontSize(8);
-            doc.text(`T${i + 1}`, margin + xOffset + 4.5, yPos + yOffset + 6.5);
-            
-            doc.setTextColor(0, 0, 0);
-            doc.setFontSize(9);
-            const maxNameWidth = groupCardWidth - 20;
-            let displayName = name;
-            if (doc.getTextWidth(displayName) > maxNameWidth) {
-                displayName = displayName.substring(0, Math.floor(maxNameWidth / 3.5)) + '...';
-            }
-            doc.text(displayName, margin + xOffset + 16, yPos + yOffset + 7);
-        });
-        
-        yPos += Math.ceil(names.length / groupsPerRow) * 12 + 15;
-        
-        // === 圖表區塊 ===
-        if (typeof chart !== 'undefined' && chart) {
-            doc.addPage();
-            doc.setFont(FONT_NAME, 'normal');
-            yPos = margin;
-            
-            doc.setFillColor(34, 139, 34);
-            doc.rect(0, 0, pageWidth, 25, 'F');
-            doc.setFontSize(16);
-            doc.setTextColor(255, 255, 255);
-            const chartTitle = '防治率趨勢圖';
-            const chartTitleWidth = doc.getTextWidth(chartTitle);
-            doc.text(chartTitle, (pageWidth - chartTitleWidth) / 2, 17);
-            
-            yPos = 35;
-            
-            try {
-                const chartCanvas = document.getElementById('chartCanvas');
-                if (chartCanvas) {
-                    const originalWidth = chartCanvas.width;
-                    const originalHeight = chartCanvas.height;
-                    const aspectRatio = originalWidth / originalHeight;
-                    const maxWidth = contentWidth - 10;
-                    const maxHeight = 140;
-                    let finalWidth, finalHeight;
-                    
-                    if (aspectRatio > maxWidth / maxHeight) {
-                        finalWidth = maxWidth;
-                        finalHeight = maxWidth / aspectRatio;
-                    } else {
-                        finalHeight = maxHeight;
-                        finalWidth = maxHeight * aspectRatio;
-                    }
-                    
-                    const containerHeight = finalHeight + 20;
-                    doc.setFillColor(255, 255, 255);
-                    doc.setDrawColor(200, 200, 200);
-                    doc.setLineWidth(1);
-                    doc.roundedRect(margin, yPos, contentWidth, containerHeight, 3, 3, 'FD');
-                    
-                    doc.setFillColor(248, 249, 250);
-                    doc.rect(margin, yPos, contentWidth, 15, 'F');
-                    doc.setFontSize(10);
-                    doc.setTextColor(80, 80, 80);
-                    doc.text('各處理隨時間之防治率變化', margin + 5, yPos + 10);
-                    
-                    const chartX = margin + (contentWidth - finalWidth) / 2;
-                    const chartY = yPos + 15 + (containerHeight - 15 - finalHeight) / 2;
-                    const chartImage = chartCanvas.toDataURL('image/png', 0.8);
-                    doc.addImage(chartImage, 'PNG', chartX, chartY, finalWidth, finalHeight);
-                    
-                    yPos += containerHeight + 10;
-                    
-                    doc.setFontSize(8);
-                    doc.setTextColor(120, 120, 120);
-                    const noteText = '防治率公式: (1 - 處理組平均 / 對照組平均) × 100%。數值越高表示防治效果越好。';
-                    const noteWidth = doc.getTextWidth(noteText);
-                    doc.text(noteText, (pageWidth - noteWidth) / 2, yPos);
-                }
-            } catch (error) {
-                console.warn('Cannot add chart to PDF:', error);
-                doc.setFontSize(12);
-                doc.setTextColor(200, 100, 100);
-                const errorText = '圖表嵌入失敗，請參考網頁版本。';
-                const errorWidth = doc.getTextWidth(errorText);
-                doc.text(errorText, (pageWidth - errorWidth) / 2, yPos + 50);
-            }
-        }
-        
-        // === 統計結果表格 ===
-        doc.addPage();
-        doc.setFont(FONT_NAME, 'normal');
-        yPos = margin;
-        
-        doc.setFillColor(34, 139, 34);
-        doc.rect(0, 0, pageWidth, 25, 'F');
-        doc.setFontSize(16);
-        doc.setTextColor(255, 255, 255);
-        const tableTitle = '統計結果數據';
-        const tableTitleWidth = doc.getTextWidth(tableTitle);
-        doc.text(tableTitle, (pageWidth - tableTitleWidth) / 2, 17);
-        
-        yPos = 35;
-        
-        const totalCols = 3 + (T * 2);
-        const availableWidth = contentWidth;
-        const colWidth = Math.max(18, Math.min(25, availableWidth / totalCols));
-        const actualTableWidth = colWidth * totalCols;
-        const tableStartX = margin + Math.max(0, (contentWidth - actualTableWidth) / 2);
-        
-        doc.setFillColor(34, 139, 34);
-        doc.rect(tableStartX, yPos, actualTableWidth, 12, 'F');
-        doc.setDrawColor(34, 139, 34);
-        doc.setLineWidth(1);
-        doc.rect(tableStartX, yPos, actualTableWidth, 12, 'S');
-        
-        doc.setFontSize(8);
-        doc.setTextColor(255, 255, 255);
-        doc.setFont(FONT_NAME, 'bold');
-        
-        const headers = ['時間點', '對照組平均', '對照組CV%'];
-        names.forEach((name, i) => {
-            headers.push(`處理${i + 1} 防治率%`, `處理${i + 1} CV%`);
-        });
-        
-        let xPos = tableStartX;
-        headers.forEach((header, i) => {
-            if (i > 0) {
-                doc.setDrawColor(255, 255, 255);
-                doc.setLineWidth(0.5);
-                doc.line(xPos, yPos, xPos, yPos + 12);
-            }
-            const textWidth = doc.getTextWidth(header);
-            const textX = xPos + (colWidth - textWidth) / 2;
-            doc.text(header, textX, yPos + 8);
-            xPos += colWidth;
-        });
-        
-        yPos += 12;
-        doc.setFont(FONT_NAME, 'normal');
-        
-        const maxRows = Math.min(N, 25);
-        for (let i = 0; i < maxRows; i++) {
-            if (yPos + 8 > pageHeight - 30) {
-                doc.addPage();
-                doc.setFont(FONT_NAME, 'normal');
-                yPos = margin;
-            }
-            
-            if (i % 2 === 1) {
-                doc.setFillColor(248, 249, 250);
-                doc.rect(tableStartX, yPos, actualTableWidth, 8, 'F');
-            }
-            
-            doc.setDrawColor(220, 220, 220);
-            doc.setLineWidth(0.3);
-            doc.rect(tableStartX, yPos, actualTableWidth, 8, 'S');
-            
-            xPos = tableStartX;
-            for (let col = 1; col < totalCols; col++) {
-                xPos += colWidth;
-                doc.line(xPos, yPos, xPos, yPos + 8);
-            }
-            
-            xPos = tableStartX;
-            doc.setFontSize(7);
-            doc.setTextColor(0, 0, 0);
-            
-            const timeLabel = labels[i] || `${i + 1}`;
-            const timeWidth = doc.getTextWidth(timeLabel);
-            doc.text(timeLabel, xPos + (colWidth - timeWidth) / 2, yPos + 5.5);
-            xPos += colWidth;
-            
-            const ctrlAvgText = isFinite(stats.ctrlAvg[i]) ? round2(stats.ctrlAvg[i]).toString() : '-';
-            doc.text(ctrlAvgText, xPos + (colWidth - doc.getTextWidth(ctrlAvgText)) / 2, yPos + 5.5);
-            xPos += colWidth;
-            
-            const ctrlCvText = isFinite(stats.ctrlCv[i]) ? round1(stats.ctrlCv[i]).toString() + '%' : '-';
-            doc.text(ctrlCvText, xPos + (colWidth - doc.getTextWidth(ctrlCvText)) / 2, yPos + 5.5);
-            xPos += colWidth;
-            
-            for (let t = 0; t < T; t++) {
-                const eff = stats.eff[t][i];
-                let effText = (eff !== null && isFinite(eff)) ? round2(eff).toString() : '-';
-                const isSignificant = stats.isSignificant[t][i];
-                
-                if (isSignificant && effText !== '-') {
-                    doc.setTextColor(220, 20, 20);
-                    doc.setFont(FONT_NAME, 'bold');
-                    effText += '*';
-                } else {
-                    doc.setTextColor(0, 0, 0);
-                    doc.setFont(FONT_NAME, 'normal');
-                }
-                
-                doc.text(effText, xPos + (colWidth - doc.getTextWidth(effText)) / 2, yPos + 5.5);
-                xPos += colWidth;
-                
-                doc.setTextColor(0, 0, 0);
-                doc.setFont(FONT_NAME, 'normal');
-                const trCvText = isFinite(stats.trCv[t][i]) ? round1(stats.trCv[t][i]).toString() + '%' : '-';
-                doc.text(trCvText, xPos + (colWidth - doc.getTextWidth(trCvText)) / 2, yPos + 5.5);
-                xPos += colWidth;
-            }
-            
-            yPos += 8;
-        }
-        
-        if (N > maxRows) {
-            yPos += 5;
-            doc.setFontSize(8);
-            doc.setTextColor(120, 120, 120);
-            const omittedText = `... 其餘 ${N - maxRows} 個時間點已省略 (完整數據請參考 CSV 匯出)`;
-            doc.text(omittedText, (pageWidth - doc.getTextWidth(omittedText)) / 2, yPos);
-        }
-        
-        // === 統計摘要 ===
-        doc.addPage();
-        doc.setFont(FONT_NAME, 'normal');
-        yPos = margin;
-        
-        doc.setFillColor(34, 139, 34);
-        doc.rect(0, 0, pageWidth, 25, 'F');
-        doc.setFontSize(16);
-        doc.setTextColor(255, 255, 255);
-        const summaryTitle = '統計摘要';
-        doc.text(summaryTitle, (pageWidth - doc.getTextWidth(summaryTitle)) / 2, 17);
-        
-        yPos = 40;
-        
-        names.forEach((name, t) => {
-            const validEffs = stats.eff[t].filter(e => e !== null && isFinite(e));
-            const significantCount = stats.isSignificant[t].filter(Boolean).length;
-            
-            if (validEffs.length > 0) {
-                checkPageBreak(35);
-                
-                doc.setFillColor(248, 249, 250);
-                doc.setDrawColor(34, 139, 34);
-                doc.setLineWidth(1);
-                doc.roundedRect(margin, yPos, contentWidth, 32, 3, 3, 'FD');
-                
-                doc.setFillColor(34, 139, 34);
-                doc.rect(margin, yPos, contentWidth, 10, 'F');
-                
-                doc.setFontSize(11);
-                doc.setTextColor(255, 255, 255);
-                doc.setFont(FONT_NAME, 'bold');
-                const treatmentName = name;
-                doc.text(`${treatmentName} (T${t + 1})`, margin + 8, yPos + 7);
-                
-                doc.setFontSize(9);
-                doc.setFont(FONT_NAME, 'normal');
-                
-                const avgEff = round2(validEffs.reduce((a, b) => a + b, 0) / validEffs.length);
-                const maxEff = round2(Math.max(...validEffs));
-                const minEff = round2(Math.min(...validEffs));
-                const sigPercent = round1(significantCount/N*100);
-                
-                const statsData = [
-                    ['平均防治率：', `${avgEff}%`],
-                    ['最高防治率：', `${maxEff}%`],
-                    ['最低防治率：', `${minEff}%`],
-                    ['顯著差異點：', `${significantCount}/${N} (${sigPercent}%)`]
-                ];
-                
-                const statWidth = (contentWidth - 20) / 2;
-                statsData.forEach(([label, value], index) => {
-                    const col = index % 2;
-                    const row = Math.floor(index / 2);
-                    const xOffset = col * statWidth;
-                    const yOffset = row * 8;
-                    
-                    doc.setTextColor(80, 80, 80);
-                    doc.text(label, margin + 10 + xOffset, yPos + 18 + yOffset);
-                    
-                    doc.setTextColor(34, 139, 34);
-                    doc.setFont(FONT_NAME, 'bold');
-                    doc.text(value, margin + 10 + xOffset + doc.getTextWidth(label + ' '), yPos + 18 + yOffset);
-                    doc.setFont(FONT_NAME, 'normal');
-                });
-                
-                yPos += 40;
-            }
-        });
-        
-        // === 方法說明 ===
-        checkPageBreak(50);
-        
-        doc.setFillColor(240, 248, 255);
-        doc.setDrawColor(100, 150, 255);
-        doc.setLineWidth(0.5);
-        doc.roundedRect(margin, yPos, contentWidth, 45, 3, 3, 'FD');
-        
-        doc.setFontSize(12);
-        doc.setTextColor(0, 100, 200);
-        doc.setFont(FONT_NAME, 'bold');
-        doc.text('方法與註記', margin + 8, yPos + 12);
-        
-        doc.setFontSize(8);
-        doc.setTextColor(60, 60, 60);
-        doc.setFont(FONT_NAME, 'normal');
-        
-        const notes = [
-            '資料轉換：所有原始計數皆經過 (X + 0.5)½ 平方根轉換',
-            '防治率計算：(1 - 處理組轉換後平均 / 對照組轉換後平均) × 100%',
-            '統計檢定：各時間點的處理組與對照組進行雙樣本 t-檢定',
-            '顯著水準：p < 0.05 (在表格中以 * 號標示)',
-            'CV% = 變異係數 = (標準差 / 平均值) × 100%'
-        ];
-        
-        notes.forEach((note, index) => {
-            doc.text(`• ${note}`, margin + 12, yPos + 22 + (index * 6));
-        });
-        
-        // 頁腳
-        yPos = pageHeight - 10;
-        doc.setFontSize(8);
-        doc.setTextColor(150, 150, 150);
-        const footerText = `由防治率分析系統產生 - ${new Date().toISOString().split('T')[0]}`;
-        doc.text(footerText, (pageWidth - doc.getTextWidth(footerText)) / 2, yPos);
-        
-        doc.save('防治率分析報告.pdf');
-    }
-
-    function downloadDemoCSV() {
+function downloadDemoCSV() {
         const header = ['時間點', '對照-重複1', '對照-重複2', '對照-重複3', '處理1-重複1', '處理1-重複2', '處理1-重複3', '處理2-重複1', '處理2-重複2', '處理2-重複3', '處理3-重複1', '處理3-重複2', '處理3-重複3'];
         const rows = [header];
         
+        // 生成 12 個月的示範數據
         for (let i = 1; i <= 12; i++) {
             const baseCtrl = 24 + Math.round(6 * Math.sin(i / 2));
             const row = [`${i}月`];
-            for (let r = 0; r < 3; r++) { row.push(Math.max(0, Math.round(baseCtrl + (Math.random() * 6 - 3)))); }
+            
+            // 對照組數據
+            for (let r = 0; r < 3; r++) {
+                row.push(Math.max(0, Math.round(baseCtrl + (Math.random() * 6 - 3))));
+            }
+            
+            // 各處理組數據
             for (let t = 1; t <= 3; t++) {
                 for (let r = 0; r < 3; r++) {
                     const drift = (t * 3) + (i * 0.6);
@@ -872,7 +393,557 @@
         a.click();
         URL.revokeObjectURL(a.href);
     }
+
+ function exportReport() {
+    const cache = window.__calcCache;
+    if (!cache) { 
+        alert('請先計算再匯出報告。'); 
+        return; 
+    }
+
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF('p', 'mm', 'a4');
     
+    const { labels, stats } = cache;
+    const names = getTreatmentNames();
+    const T = parseInt($('#treatments').value) || 1;
+    const R = parseInt($('#replicates').value) || 1;
+    const N = parseInt($('#timepoints').value) || 1;
+    const prefix = ($('#tpPrefix').value || '').trim();
+    
+    let yPos = 15;
+    const pageHeight = 297;
+    const margin = 15;
+    const pageWidth = 210;
+    const contentWidth = pageWidth - (2 * margin);
+    
+    // 輔助函數 - 檢查是否需要新頁面
+    function checkPageBreak(requiredHeight) {
+        if (yPos + requiredHeight > pageHeight - 20) {
+            doc.addPage();
+            yPos = margin;
+            return true;
+        }
+        return false;
+    }
+    
+    // 輔助函數 - 繪製分隔線
+    function drawSeparator() {
+        doc.setDrawColor(220, 220, 220);
+        doc.setLineWidth(0.3);
+        doc.line(margin, yPos, pageWidth - margin, yPos);
+        yPos += 5;
+    }
+    
+    // === 封面設計 ===
+    // 背景設計
+    doc.setFillColor(34, 139, 34);
+    doc.rect(0, 0, pageWidth, 30, 'F');
+    
+    // 主標題
+    doc.setFontSize(22);
+    doc.setTextColor(255, 255, 255);
+    const titleText = 'CONTROL EFFICACY ANALYSIS';
+    const titleWidth = doc.getTextWidth(titleText);
+    doc.text(titleText, (pageWidth - titleWidth) / 2, 20);
+    
+    yPos = 40;
+    
+    // 副標題
+    doc.setFontSize(16);
+    doc.setTextColor(34, 139, 34);
+    const subtitleText = 'Prevention Efficacy Calculator Report';
+    const subtitleWidth = doc.getTextWidth(subtitleText);
+    doc.text(subtitleText, (pageWidth - subtitleWidth) / 2, yPos);
+    
+    // 分隔線
+    yPos += 8;
+    doc.setDrawColor(34, 139, 34);
+    doc.setLineWidth(1);
+    const lineStart = (pageWidth - 120) / 2;
+    doc.line(lineStart, yPos, lineStart + 120, yPos);
+    
+    yPos += 15;
+    doc.setFontSize(10);
+    doc.setTextColor(100, 100, 100);
+    const dateText = `Report Generated: ${new Date().toLocaleString('en-US')}`;
+    const dateWidth = doc.getTextWidth(dateText);
+    doc.text(dateText, (pageWidth - dateWidth) / 2, yPos);
+    
+    yPos += 25;
+    
+    // === 實驗參數區塊 ===
+    const paramBoxHeight = 40;
+    doc.setFillColor(248, 249, 250);
+    doc.setDrawColor(200, 200, 200);
+    doc.setLineWidth(0.5);
+    doc.roundedRect(margin, yPos - 5, contentWidth, paramBoxHeight, 3, 3, 'FD');
+    
+    // 區塊標題
+    doc.setFontSize(14);
+    doc.setTextColor(34, 139, 34);
+    doc.text('EXPERIMENTAL DESIGN', margin + 10, yPos + 8);
+    
+    yPos += 18;
+    
+    // 參數排列
+    doc.setFontSize(10);
+    const params = [
+        ['Treatments:', `${T} groups`],
+        ['Replicates:', `${R} per group`],
+        ['Time Points:', `${N} measurements`],
+        ['Time Prefix:', `${prefix || 'None'}`]
+    ];
+    
+    const cardWidth = (contentWidth - 30) / 2;
+    params.forEach(([key, value], index) => {
+        const col = index % 2;
+        const row = Math.floor(index / 2);
+        const xOffset = col * (cardWidth + 10);
+        const yOffset = row * 10;
+        
+        doc.setTextColor(80, 80, 80);
+        doc.text(key, margin + 15 + xOffset, yPos + yOffset);
+        doc.setTextColor(0, 0, 0);
+        doc.setFont(undefined, 'bold');
+        doc.text(value, margin + 15 + xOffset + doc.getTextWidth(key + ' '), yPos + yOffset);
+        doc.setFont(undefined, 'normal');
+    });
+    
+    yPos += 25;
+    
+    // === 處理組資訊 ===
+    checkPageBreak(20 + Math.ceil(names.length / 3) * 12);
+    
+    doc.setFontSize(14);
+    doc.setTextColor(34, 139, 34);
+    doc.text('TREATMENT GROUPS', margin, yPos);
+    
+    yPos += 10;
+    drawSeparator();
+    
+    // 處理組列表
+    doc.setFontSize(10);
+    const groupsPerRow = 3;
+    const groupCardWidth = (contentWidth - 10) / groupsPerRow;
+    
+    names.forEach((name, i) => {
+        const col = i % groupsPerRow;
+        const row = Math.floor(i / groupsPerRow);
+        const xOffset = col * groupCardWidth;
+        const yOffset = row * 12;
+        
+        if (yPos + yOffset > pageHeight - 40) {
+            doc.addPage();
+            yPos = margin;
+        }
+        
+        // 處理組背景
+        doc.setFillColor(245, 245, 245);
+        doc.setDrawColor(200, 200, 200);
+        doc.setLineWidth(0.3);
+        doc.roundedRect(margin + xOffset, yPos + yOffset, groupCardWidth - 2, 10, 2, 2, 'FD');
+        
+        // 處理組標籤
+        doc.setFillColor(34, 139, 34);
+        doc.roundedRect(margin + xOffset + 2, yPos + yOffset + 2, 12, 6, 1, 1, 'F');
+        
+        doc.setTextColor(255, 255, 255);
+        doc.setFontSize(8);
+        doc.text(`T${i + 1}`, margin + xOffset + 4, yPos + yOffset + 6);
+        
+        // 處理組名稱
+        doc.setTextColor(0, 0, 0);
+        doc.setFontSize(9);
+        const englishName = name.replace(/處理/g, 'Treatment').replace(/對照/g, 'Control');
+        const maxNameWidth = groupCardWidth - 20;
+        let displayName = englishName;
+        if (doc.getTextWidth(displayName) > maxNameWidth) {
+            displayName = displayName.substring(0, Math.floor(maxNameWidth / 2.5)) + '...';
+        }
+        doc.text(displayName, margin + xOffset + 16, yPos + yOffset + 6);
+    });
+    
+    yPos += Math.ceil(names.length / groupsPerRow) * 12 + 15;
+    
+    // === 圖表區塊 ===
+    if (typeof chart !== 'undefined' && chart) {
+        doc.addPage();
+        yPos = margin;
+        
+        // 圖表標題
+        doc.setFillColor(34, 139, 34);
+        doc.rect(0, 0, pageWidth, 25, 'F');
+        doc.setFontSize(16);
+        doc.setTextColor(255, 255, 255);
+        const chartTitle = 'EFFICACY TRENDS';
+        const chartTitleWidth = doc.getTextWidth(chartTitle);
+        doc.text(chartTitle, (pageWidth - chartTitleWidth) / 2, 17);
+        
+        yPos = 35;
+        
+        try {
+            const chartCanvas = document.getElementById('chartCanvas');
+            if (chartCanvas) {
+                // 獲取原始Canvas尺寸
+                const originalWidth = chartCanvas.width;
+                const originalHeight = chartCanvas.height;
+                const aspectRatio = originalWidth / originalHeight;
+                
+                // 計算PDF中的最佳尺寸
+                const maxWidth = contentWidth - 10;
+                const maxHeight = 140;
+                
+                let finalWidth, finalHeight;
+                
+                // 根據長寬比決定最終尺寸
+                if (aspectRatio > maxWidth / maxHeight) {
+                    // 寬圖：以寬度為準
+                    finalWidth = maxWidth;
+                    finalHeight = maxWidth / aspectRatio;
+                } else {
+                    // 高圖：以高度為準
+                    finalHeight = maxHeight;
+                    finalWidth = maxHeight * aspectRatio;
+                }
+                
+                // 確保不超過最大限制
+                if (finalHeight > maxHeight) {
+                    finalHeight = maxHeight;
+                    finalWidth = maxHeight * aspectRatio;
+                }
+                if (finalWidth > maxWidth) {
+                    finalWidth = maxWidth;
+                    finalHeight = maxWidth / aspectRatio;
+                }
+                
+                // 圖表容器
+                const containerHeight = finalHeight + 20;
+                doc.setFillColor(255, 255, 255);
+                doc.setDrawColor(200, 200, 200);
+                doc.setLineWidth(1);
+                doc.roundedRect(margin, yPos, contentWidth, containerHeight, 3, 3, 'FD');
+                
+                // 圖表標題區
+                doc.setFillColor(248, 249, 250);
+                doc.rect(margin, yPos, contentWidth, 15, 'F');
+                doc.setFontSize(10);
+                doc.setTextColor(80, 80, 80);
+                doc.text('Treatment Efficacy Over Time', margin + 5, yPos + 10);
+                
+                // 計算圖表居中位置
+                const chartX = margin + (contentWidth - finalWidth) / 2;
+                const chartY = yPos + 15 + (containerHeight - 15 - finalHeight) / 2;
+                
+                // 轉換並嵌入圖表
+                const chartImage = chartCanvas.toDataURL('image/png', 0.8);
+                doc.addImage(chartImage, 'PNG', chartX, chartY, finalWidth, finalHeight);
+                
+                yPos += containerHeight + 10;
+                
+                // 圖表說明
+                doc.setFontSize(8);
+                doc.setTextColor(120, 120, 120);
+                const noteText = 'Efficacy calculated as (1 - Treatment/Control) x 100%. Higher values indicate better control.';
+                const noteWidth = doc.getTextWidth(noteText);
+                doc.text(noteText, (pageWidth - noteWidth) / 2, yPos);
+            }
+        } catch (error) {
+            console.warn('Cannot add chart to PDF:', error);
+            doc.setFontSize(12);
+            doc.setTextColor(200, 100, 100);
+            const errorText = 'Chart embedding failed - please check digital version';
+            const errorWidth = doc.getTextWidth(errorText);
+            doc.text(errorText, (pageWidth - errorWidth) / 2, yPos + 50);
+        }
+    }
+    
+    // === 統計結果表格 (新頁面) ===
+    doc.addPage();
+    yPos = margin;
+    
+    // 表格標題
+    doc.setFillColor(34, 139, 34);
+    doc.rect(0, 0, pageWidth, 25, 'F');
+    doc.setFontSize(16);
+    doc.setTextColor(255, 255, 255);
+    const tableTitle = 'STATISTICAL RESULTS';
+    const tableTitleWidth = doc.getTextWidth(tableTitle);
+    doc.text(tableTitle, (pageWidth - tableTitleWidth) / 2, 17);
+    
+    yPos = 35;
+    
+    // 計算表格尺寸
+    const totalCols = 3 + (T * 2);
+    const availableWidth = contentWidth;
+    const colWidth = Math.max(18, Math.min(25, availableWidth / totalCols));
+    const actualTableWidth = colWidth * totalCols;
+    const tableStartX = margin + Math.max(0, (contentWidth - actualTableWidth) / 2);
+    
+    // 表格標題行
+    doc.setFillColor(34, 139, 34);
+    doc.rect(tableStartX, yPos, actualTableWidth, 12, 'F');
+    doc.setDrawColor(34, 139, 34);
+    doc.setLineWidth(1);
+    doc.rect(tableStartX, yPos, actualTableWidth, 12, 'S');
+    
+    // 標題文字
+    doc.setFontSize(8);
+    doc.setTextColor(255, 255, 255);
+    doc.setFont(undefined, 'bold');
+    
+    const headers = ['Time Point', 'Control Avg', 'Control CV%'];
+    names.forEach((name, i) => {
+        headers.push(`T${i + 1} Eff%`, `T${i + 1} CV%`);
+    });
+    
+    let xPos = tableStartX;
+    headers.forEach((header, i) => {
+        if (i > 0) {
+            doc.setDrawColor(255, 255, 255);
+            doc.setLineWidth(0.5);
+            doc.line(xPos, yPos, xPos, yPos + 12);
+        }
+        
+        const textWidth = doc.getTextWidth(header);
+        const textX = xPos + (colWidth - textWidth) / 2;
+        doc.text(header, textX, yPos + 8);
+        xPos += colWidth;
+    });
+    
+    yPos += 12;
+    doc.setFont(undefined, 'normal');
+    
+    // 數據行
+    const maxRows = Math.min(N, 25);
+    for (let i = 0; i < maxRows; i++) {
+        // 換頁檢查
+        if (yPos + 8 > pageHeight - 30) {
+            doc.addPage();
+            yPos = margin;
+            
+            // 重複表頭
+            doc.setFillColor(240, 240, 240);
+            doc.rect(tableStartX, yPos, actualTableWidth, 10, 'F');
+            doc.setDrawColor(180, 180, 180);
+            doc.setLineWidth(0.5);
+            doc.rect(tableStartX, yPos, actualTableWidth, 10, 'S');
+            
+            doc.setFontSize(7);
+            doc.setTextColor(0, 0, 0);
+            doc.setFont(undefined, 'bold');
+            xPos = tableStartX;
+            headers.forEach((header, j) => {
+                if (j > 0) {
+                    doc.line(xPos, yPos, xPos, yPos + 10);
+                }
+                const textWidth = doc.getTextWidth(header);
+                const textX = xPos + (colWidth - textWidth) / 2;
+                doc.text(header, textX, yPos + 7);
+                xPos += colWidth;
+            });
+            yPos += 10;
+            doc.setFont(undefined, 'normal');
+        }
+        
+        // 交替行背景
+        if (i % 2 === 1) {
+            doc.setFillColor(248, 249, 250);
+            doc.rect(tableStartX, yPos, actualTableWidth, 8, 'F');
+        }
+        
+        // 行邊框
+        doc.setDrawColor(220, 220, 220);
+        doc.setLineWidth(0.3);
+        doc.rect(tableStartX, yPos, actualTableWidth, 8, 'S');
+        
+        // 垂直分隔線
+        xPos = tableStartX;
+        for (let col = 1; col < totalCols; col++) {
+            xPos += colWidth;
+            doc.line(xPos, yPos, xPos, yPos + 8);
+        }
+        
+        // 數據填充
+        xPos = tableStartX;
+        doc.setFontSize(7);
+        doc.setTextColor(0, 0, 0);
+        
+        // 時間點
+        const timeLabel = labels[i] || `${i + 1}`;
+        const englishTimeLabel = timeLabel.replace(/月/g, 'M').replace(/週/g, 'W').replace(/天/g, 'D').replace(/日/g, 'D');
+        const timeWidth = doc.getTextWidth(englishTimeLabel);
+        doc.text(englishTimeLabel, xPos + (colWidth - timeWidth) / 2, yPos + 5);
+        xPos += colWidth;
+        
+        // 對照組平均值
+        const ctrlAvgText = isFinite(stats.ctrlAvg[i]) ? round2(stats.ctrlAvg[i]).toString() : '-';
+        const ctrlAvgWidth = doc.getTextWidth(ctrlAvgText);
+        doc.text(ctrlAvgText, xPos + (colWidth - ctrlAvgWidth) / 2, yPos + 5);
+        xPos += colWidth;
+        
+        // 對照組CV
+        const ctrlCvText = isFinite(stats.ctrlCv[i]) ? round1(stats.ctrlCv[i]).toString() + '%' : '-';
+        const ctrlCvWidth = doc.getTextWidth(ctrlCvText);
+        doc.text(ctrlCvText, xPos + (colWidth - ctrlCvWidth) / 2, yPos + 5);
+        xPos += colWidth;
+        
+        // 處理組數據
+        for (let t = 0; t < T; t++) {
+            // 效果值
+            const eff = stats.eff[t][i];
+            let effText = (eff !== null && isFinite(eff)) ? round2(eff).toString() : '-';
+            const isSignificant = stats.isSignificant[t][i];
+            
+            if (isSignificant && effText !== '-') {
+                doc.setTextColor(220, 20, 20);
+                doc.setFont(undefined, 'bold');
+                effText += '*';
+            } else {
+                doc.setTextColor(0, 0, 0);
+                doc.setFont(undefined, 'normal');
+            }
+            
+            const effWidth = doc.getTextWidth(effText);
+            doc.text(effText, xPos + (colWidth - effWidth) / 2, yPos + 5);
+            xPos += colWidth;
+            
+            // CV值
+            doc.setTextColor(0, 0, 0);
+            doc.setFont(undefined, 'normal');
+            const trCvText = isFinite(stats.trCv[t][i]) ? round1(stats.trCv[t][i]).toString() + '%' : '-';
+            const trCvWidth = doc.getTextWidth(trCvText);
+            doc.text(trCvText, xPos + (colWidth - trCvWidth) / 2, yPos + 5);
+            xPos += colWidth;
+        }
+        
+        yPos += 8;
+    }
+    
+    // 省略提示
+    if (N > maxRows) {
+        yPos += 5;
+        doc.setFontSize(8);
+        doc.setTextColor(120, 120, 120);
+        const omittedText = `... ${N - maxRows} additional time points omitted (see CSV export for complete data)`;
+        const omittedWidth = doc.getTextWidth(omittedText);
+        doc.text(omittedText, (pageWidth - omittedWidth) / 2, yPos);
+    }
+    
+    // === 統計摘要 ===
+    doc.addPage();
+    yPos = margin;
+    
+    doc.setFillColor(34, 139, 34);
+    doc.rect(0, 0, pageWidth, 25, 'F');
+    doc.setFontSize(16);
+    doc.setTextColor(255, 255, 255);
+    const summaryTitle = 'SUMMARY STATISTICS';
+    const summaryTitleWidth = doc.getTextWidth(summaryTitle);
+    doc.text(summaryTitle, (pageWidth - summaryTitleWidth) / 2, 17);
+    
+    yPos = 40;
+    
+    // 處理組摘要
+    names.forEach((name, t) => {
+        const validEffs = stats.eff[t].filter(e => e !== null && isFinite(e));
+        const significantCount = stats.isSignificant[t].filter(Boolean).length;
+        
+        if (validEffs.length > 0) {
+            checkPageBreak(35);
+            
+            // 摘要卡片
+            doc.setFillColor(248, 249, 250);
+            doc.setDrawColor(34, 139, 34);
+            doc.setLineWidth(1);
+            doc.roundedRect(margin, yPos, contentWidth, 32, 3, 3, 'FD');
+            
+            // 標題
+            doc.setFillColor(34, 139, 34);
+            doc.rect(margin, yPos, contentWidth, 10, 'F');
+            
+            doc.setFontSize(11);
+            doc.setTextColor(255, 255, 255);
+            doc.setFont(undefined, 'bold');
+            const treatmentName = name.replace(/處理/g, 'Treatment').replace(/對照/g, 'Control');
+            doc.text(`${treatmentName} (T${t + 1})`, margin + 8, yPos + 7);
+            
+            // 統計數據
+            doc.setFontSize(9);
+            doc.setFont(undefined, 'normal');
+            
+            const avgEff = round2(validEffs.reduce((a, b) => a + b, 0) / validEffs.length);
+            const maxEff = round2(Math.max(...validEffs));
+            const minEff = round2(Math.min(...validEffs));
+            const sigPercent = round1(significantCount/N*100);
+            
+            const statsData = [
+                ['Average Efficacy:', `${avgEff}%`],
+                ['Maximum Efficacy:', `${maxEff}%`],
+                ['Minimum Efficacy:', `${minEff}%`],
+                ['Significant Points:', `${significantCount}/${N} (${sigPercent}%)`]
+            ];
+            
+            const statWidth = (contentWidth - 20) / 2;
+            statsData.forEach(([label, value], index) => {
+                const col = index % 2;
+                const row = Math.floor(index / 2);
+                const xOffset = col * statWidth;
+                const yOffset = row * 8;
+                
+                doc.setTextColor(80, 80, 80);
+                doc.text(label, margin + 10 + xOffset, yPos + 16 + yOffset);
+                
+                doc.setTextColor(34, 139, 34);
+                doc.setFont(undefined, 'bold');
+                doc.text(value, margin + 10 + xOffset + doc.getTextWidth(label + ' '), yPos + 16 + yOffset);
+                doc.setFont(undefined, 'normal');
+            });
+            
+            yPos += 40;
+        }
+    });
+    
+    // === 方法說明 ===
+    checkPageBreak(50);
+    
+    doc.setFillColor(240, 248, 255);
+    doc.setDrawColor(100, 150, 255);
+    doc.setLineWidth(0.5);
+    doc.roundedRect(margin, yPos, contentWidth, 45, 3, 3, 'FD');
+    
+    doc.setFontSize(12);
+    doc.setTextColor(0, 100, 200);
+    doc.setFont(undefined, 'bold');
+    doc.text('METHODOLOGY & NOTES', margin + 8, yPos + 12);
+    
+    doc.setFontSize(8);
+    doc.setTextColor(60, 60, 60);
+    doc.setFont(undefined, 'normal');
+    
+    const notes = [
+        'Data Transformation: Square root transformation (X + 0.5)^0.5 applied to all raw counts',
+        'Efficacy Calculation: (1 - Treatment_mean / Control_mean) x 100%',
+        'Statistical Test: Two-sample t-test performed for each time point',
+        'Significance Level: p < 0.05 (marked with * in red color)',
+        'CV% = Coefficient of Variation = (Standard Deviation / Mean) x 100%'
+    ];
+    
+    notes.forEach((note, index) => {
+        doc.text(`• ${note}`, margin + 12, yPos + 22 + (index * 6));
+    });
+    
+    // 頁腳
+    yPos = pageHeight - 10;
+    doc.setFontSize(8);
+    doc.setTextColor(150, 150, 150);
+    const footerText = `Generated by Control Efficacy Analysis System - ${new Date().toISOString().split('T')[0]}`;
+    const footerWidth = doc.getTextWidth(footerText);
+    doc.text(footerText, (pageWidth - footerWidth) / 2, yPos);
+    
+    // 保存PDF
+    doc.save('Control-Efficacy-Analysis-Report.pdf');
+}
     function exportCSV() {
         const cache = window.__calcCache;
         if (!cache) { alert('請先計算再匯出。'); return; }
@@ -900,7 +971,7 @@
         URL.revokeObjectURL(a.href);
     }
     
-    function importCSV(e) {
+   function importCSV(e) {
         const file = e.target.files[0];
         if (!file) return;
         
@@ -918,11 +989,16 @@
                 const header = lines[0].split(',').map(h => h.trim());
                 const dataRows = lines.slice(1).map(line => line.split(',').map(cell => cell.trim()));
                 
+                console.log('Header:', header);
+                console.log('Sample data:', dataRows.slice(0, 3));
+                
+                // 更寬鬆的格式檢測
                 if (header.length < 4) {
                     alert('CSV檔案欄位數量太少，至少需要時間點+對照+處理組欄位。');
                     return;
                 }
                 
+                // 彈性檢測對照組欄位 (支援多種命名)
                 let controlCols = 0;
                 const controlKeywords = ['對照', 'control', 'Control', 'CONTROL', 'ctrl', 'Ctrl', 'CTRL', '空白', 'blank', 'Blank'];
                 
@@ -937,58 +1013,89 @@
                     if (isControl) {
                         controlCols++;
                     } else if (controlCols > 0) {
+                        // 已經找到對照組欄位，現在遇到非對照組欄位，停止計算
                         break;
                     }
                 }
                 
+                // 如果沒找到明確的對照組，假設前面幾欄是對照組
                 if (controlCols === 0) {
-                    const totalCols = header.length - 1;
-                    controlCols = (totalCols >= 3) ? 3 : 1;
+                    const totalCols = header.length - 1; // 扣除時間點欄位
+                    if (totalCols >= 3) {
+                        // 假設是 3重複 對照 + N個處理組×3重複 的格式
+                        controlCols = 3;
+                    } else {
+                        controlCols = 1;
+                    }
+                    console.log(`未找到對照組關鍵字，假設前 ${controlCols} 欄為對照組`);
                 }
                 
+                // 計算處理組數量
                 const remainingCols = header.length - 1 - controlCols;
                 let treatmentGroups = 1;
                 
                 if (remainingCols > 0) {
-                    treatmentGroups = (remainingCols % controlCols === 0) ? (remainingCols / controlCols) : Math.max(1, Math.floor(remainingCols / controlCols));
+                    // 嘗試檢測處理組數量
+                    if (remainingCols % controlCols === 0) {
+                        treatmentGroups = remainingCols / controlCols;
+                    } else {
+                        // 不能整除，猜測可能的組合
+                        const possibleGroups = Math.floor(remainingCols / controlCols);
+                        treatmentGroups = Math.max(1, possibleGroups);
+                    }
                 }
                 
+                console.log(`檢測結果: ${controlCols} 對照重複, ${treatmentGroups} 處理組, 每組約 ${Math.floor(remainingCols/treatmentGroups)} 重複`);
+                
+                // 提供用戶確認選項
                 const userConfirm = confirm(
                     `檢測到的格式：\n` +
                     `• 對照組重複數：${controlCols}\n` +
                     `• 處理組數量：${treatmentGroups}\n` +
                     `• 時間點數量：${dataRows.length}\n\n` +
-                    `是否按此格式匯入？`
+                    `是否按此格式匯入？\n` +
+                    `(點擊"取消"可手動調整參數後重新匯入)`
                 );
                 
                 if (!userConfirm) {
-                    alert('匯入已取消。');
+                    alert('匯入已取消。您可以先調整界面上的參數設定，然後重新匯入檔案。');
                     return;
                 }
                 
+                // 更新界面參數
                 $('#treatments').value = Math.max(1, treatmentGroups);
                 $('#replicates').value = Math.max(1, controlCols);
                 $('#timepoints').value = dataRows.length;
                 
+                // 重建界面
                 buildInputs();
                 
+                // 填入數據 - 更彈性的方式
                 for (let i = 0; i < dataRows.length; i++) {
                     const rowData = dataRows[i];
-                    if (rowData.length < 2) continue;
+                    if (rowData.length < 2) continue; // 至少要有時間點+1個數據
                     
+                    // 填入對照組數據
                     for (let r = 1; r <= controlCols && r < rowData.length; r++) {
-                        const input = $(`#ctrl_${i + 1}_${r}`);
-                        if (input && rowData[r] !== undefined) {
-                            input.value = rowData[r];
+                        const input = document.querySelector(`#ctrl_${i + 1}_${r}`);
+                        if (input && rowData[r] && rowData[r] !== '') {
+                            // 嘗試轉換為數字
+                            const numValue = parseFloat(rowData[r]);
+                            input.value = isNaN(numValue) ? rowData[r] : numValue;
                         }
                     }
                     
+                    // 填入處理組數據
                     let colIndex = controlCols + 1;
-                    for (let t = 1; t <= treatmentGroups && colIndex < rowData.length; t++) {
-                        for (let r = 1; r <= controlCols && colIndex < rowData.length; r++) {
-                            const input = $(`#t${t}_${i + 1}_${r}`);
-                            if (input && rowData[colIndex] !== undefined) {
-                                input.value = rowData[colIndex];
+                    const actualTreatments = parseInt($('#treatments').value);
+                    const actualReplicates = parseInt($('#replicates').value);
+                    
+                    for (let t = 1; t <= actualTreatments && colIndex < rowData.length; t++) {
+                        for (let r = 1; r <= actualReplicates && colIndex < rowData.length; r++) {
+                            const input = document.querySelector(`#t${t}_${i + 1}_${r}`);
+                            if (input && rowData[colIndex] && rowData[colIndex] !== '') {
+                                const numValue = parseFloat(rowData[colIndex]);
+                                input.value = isNaN(numValue) ? rowData[colIndex] : numValue;
                             }
                             colIndex++;
                         }
@@ -999,14 +1106,14 @@
                 
             } catch (error) {
                 console.error('Import error:', error);
-                alert(`匯入失敗：${error.message}`);
+                alert(`匯入失敗：${error.message}\n\n請檢查CSV格式：\n1. 第一行應為標題\n2. 使用逗號分隔\n3. 包含時間點、對照組、處理組欄位`);
             } finally {
                 e.target.value = '';
             }
         };
         
         reader.onerror = function() {
-            alert('檔案讀取失敗。');
+            alert('檔案讀取失敗，請檢查檔案是否損壞。');
         };
         
         reader.readAsText(file, 'UTF-8');
@@ -1019,10 +1126,9 @@
         }
         const a = document.createElement('a');
         a.href = chart.toBase64Image();
-        a.download = '防治率趨勢圖.png';
+        a.download = 'efficacy-chart.png';
         a.click();
     }
-
     let chart;
     function clearChart() {
         if (chart) {
@@ -1055,11 +1161,17 @@
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
-                layout: { padding: { left: 10, right: 20, top: 20, bottom: 10 } },
+                layout: {
+                    padding: { left: 10, right: 20, top: 20, bottom: 10 }
+                },
                 plugins: {
                     legend: {
                         position: 'bottom',
-                        labels: { boxWidth: 15, color: textColor, font: { size: 14 } }
+                        labels: { 
+                            boxWidth: 15,
+                            color: textColor,
+                            font: { size: 14 }
+                        }
                     },
                     tooltip: {
                         mode: 'index',
@@ -1083,12 +1195,18 @@
                 },
                 scales: {
                     x: {
-                        grid: { color: gridColor, drawTicks: false },
+                        grid: { 
+                            color: gridColor,
+                            drawTicks: false
+                        },
                         ticks: { color: textColor, font: { size: 14 } },
                         title: { display: true, text: '時間點', color: textColor, font: { size: 16 } }
                     },
                     y: {
-                        grid: { color: gridColor, zeroLineColor: gridColor },
+                        grid: { 
+                            color: gridColor,
+                            zeroLineColor: gridColor 
+                        },
                         ticks: { 
                             color: textColor,
                             font: { size: 14 },
@@ -1129,7 +1247,7 @@
         $('#btnImport').addEventListener('click', () => $('#fileInput').click());
         $('#fileInput').addEventListener('change', importCSV);
         $('#btnCSV').addEventListener('click', exportCSV);
-        $('#btnDemoCSV').addEventListener('click', downloadDemoCSV);
+$('#btnDemoCSV').addEventListener('click', downloadDemoCSV);
         $('#btnReport').addEventListener('click', exportReport);
         $('#btnPNG').addEventListener('click', downloadPNG);
         $('#treatments').addEventListener('change', buildTreatmentNames);
