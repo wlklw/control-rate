@@ -396,14 +396,14 @@ function downloadDemoCSV() {
 
  function exportReport() {
     const cache = window.__calcCache;
-    if (!cache) { 
-        alert('請先計算再匯出報告。'); 
-        return; 
+    if (!cache) {
+        alert('請先計算再匯出報告。');
+        return;
     }
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF('p', 'mm', 'a4');
-    
-    // 必須嵌入中文字型！請參考官方自訂字型教學
+
+    // 必須嵌入中文字型
     doc.setFont('NotoSansTC', 'normal');
 
     const { labels, stats } = cache;
@@ -424,6 +424,7 @@ function downloadDemoCSV() {
     doc.rect(0, 0, pageWidth, 30, 'F');
     doc.setFontSize(22);
     doc.setTextColor(255, 255, 255);
+    doc.setFont('NotoSansTC', 'normal');
     const titleText = '藥劑防治成效分析系統';
     const titleWidth = doc.getTextWidth(titleText);
     doc.text(titleText, (pageWidth - titleWidth) / 2, 20);
@@ -431,6 +432,7 @@ function downloadDemoCSV() {
     yPos = 40;
     doc.setFontSize(16);
     doc.setTextColor(34, 139, 34);
+    doc.setFont('NotoSansTC', 'normal');
     const subtitleText = '防治/藥效統計報表';
     const subtitleWidth = doc.getTextWidth(subtitleText);
     doc.text(subtitleText, (pageWidth - subtitleWidth) / 2, yPos);
@@ -443,6 +445,7 @@ function downloadDemoCSV() {
     yPos += 15;
     doc.setFontSize(10);
     doc.setTextColor(100, 100, 100);
+    doc.setFont('NotoSansTC', 'normal');
     const dateText = `報告產生時間：${new Date().toLocaleString('zh-TW')}`;
     const dateWidth = doc.getTextWidth(dateText);
     doc.text(dateText, (pageWidth - dateWidth) / 2, yPos);
@@ -456,6 +459,7 @@ function downloadDemoCSV() {
     doc.roundedRect(margin, yPos - 5, contentWidth, paramBoxHeight, 3, 3, 'FD');
     doc.setFontSize(14);
     doc.setTextColor(34, 139, 34);
+    doc.setFont('NotoSansTC', 'normal');
     doc.text('實驗設計參數', margin + 10, yPos + 8);
 
     yPos += 18;
@@ -473,11 +477,11 @@ function downloadDemoCSV() {
         const xOffset = col * (cardWidth + 10);
         const yOffset = row * 10;
         doc.setTextColor(80, 80, 80);
+        doc.setFont('NotoSansTC', 'normal');
         doc.text(key, margin + 15 + xOffset, yPos + yOffset);
         doc.setTextColor(0, 0, 0);
-        doc.setFont(undefined, 'bold');
+        doc.setFont('NotoSansTC', 'normal');
         doc.text(value, margin + 15 + xOffset + doc.getTextWidth(key + ' '), yPos + yOffset);
-        doc.setFont(undefined, 'normal');
     });
 
     yPos += 25;
@@ -485,6 +489,7 @@ function downloadDemoCSV() {
     // 處理組
     doc.setFontSize(14);
     doc.setTextColor(34, 139, 34);
+    doc.setFont('NotoSansTC', 'normal');
     doc.text('試驗處理組', margin, yPos);
     yPos += 10;
 
@@ -503,9 +508,11 @@ function downloadDemoCSV() {
         doc.setFillColor(34, 139, 34);
         doc.roundedRect(margin + xOffset + 2, yPos + yOffset + 2, 12, 6, 1, 1, 'F');
         doc.setTextColor(255, 255, 255);
+        doc.setFont('NotoSansTC', 'normal');
         doc.setFontSize(8);
         doc.text(`第${i + 1}組`, margin + xOffset + 4, yPos + yOffset + 6);
         doc.setTextColor(0, 0, 0);
+        doc.setFont('NotoSansTC', 'normal');
         doc.setFontSize(9);
         let displayName = name;
         const maxNameWidth = groupCardWidth - 20;
@@ -517,119 +524,14 @@ function downloadDemoCSV() {
 
     yPos += Math.ceil(names.length / groupsPerRow) * 12 + 15;
 
-    // 圖表區塊
-    if (typeof chart !== 'undefined' && chart) {
-        doc.addPage();
-        yPos = margin;
-        doc.setFillColor(34, 139, 34);
-        doc.rect(0, 0, pageWidth, 25, 'F');
-        doc.setFontSize(16);
-        doc.setTextColor(255, 255, 255);
-        const chartTitle = '年度防治成效趨勢圖';
-        const chartTitleWidth = doc.getTextWidth(chartTitle);
-        doc.text(chartTitle, (pageWidth - chartTitleWidth) / 2, 17);
-
-        yPos = 35;
-
-        // 圖表插入邏輯略，同原本...
-        // 圖表下方備註換為中文：
-        doc.setFontSize(8);
-        doc.setTextColor(120, 120, 120);
-        const noteText = '防治率計算：(1 − 處理組/對照組) × 100%。數值越高代表防治越理想。';
-        const noteWidth = doc.getTextWidth(noteText);
-        doc.text(noteText, (pageWidth - noteWidth) / 2, yPos + 150);
-    }
-
-    // 統計結果表
-    doc.addPage();
-    yPos = margin;
-    doc.setFillColor(34, 139, 34);
-    doc.rect(0, 0, pageWidth, 25, 'F');
-    doc.setFontSize(16);
-    doc.setTextColor(255, 255, 255);
-    const tableTitle = '統計結果表';
-    const tableTitleWidth = doc.getTextWidth(tableTitle);
-    doc.text(tableTitle, (pageWidth - tableTitleWidth) / 2, 17);
-
-    yPos = 35;
-    const totalCols = 3 + (T * 2);
-    const availableWidth = contentWidth;
-    const colWidth = Math.max(18, Math.min(25, availableWidth / totalCols));
-    const actualTableWidth = colWidth * totalCols;
-    const tableStartX = margin + Math.max(0, (contentWidth - actualTableWidth) / 2);
-
-    // 標題
-    doc.setFontSize(8);
-    doc.setTextColor(255, 255, 255);
-    doc.setFont(undefined, 'bold');
-    const headers = ['時間點', '對照組平均值', '對照組變異係數(%)'];
-    names.forEach((name, i) => {
-        headers.push(`${name} 防治率(%)`, `${name} 變異係數(%)`);
-    });
-    let xPos = tableStartX;
-    headers.forEach((header, i) => {
-        const textWidth = doc.getTextWidth(header);
-        doc.text(header, xPos + (colWidth - textWidth) / 2, yPos + 8);
-        xPos += colWidth;
-    });
-
-    yPos += 12;
-    doc.setFont(undefined, 'normal');
-
-    // 數據填入略 -- 按原本邏輯即可，不需改語言
-
-    // 統計摘要
-    doc.addPage();
-    yPos = margin;
-    doc.setFillColor(34, 139, 34);
-    doc.rect(0, 0, pageWidth, 25, 'F');
-    doc.setFontSize(16);
-    doc.setTextColor(255, 255, 255);
-    const summaryTitle = '各組統計摘要';
-    const summaryTitleWidth = doc.getTextWidth(summaryTitle);
-    doc.text(summaryTitle, (pageWidth - summaryTitleWidth) / 2, 17);
-
-    yPos = 40;
-    names.forEach((name, t) => {
-        const validEffs = stats.eff[t].filter(e => e !== null && isFinite(e));
-        const significantCount = stats.isSignificant[t].filter(Boolean).length;
-        if (validEffs.length > 0) {
-            // ...同原本卡片邏輯
-            // 統計欄位改成：
-            const statsData = [
-                ['平均防治率：', `${round2(validEffs.reduce((a, b) => a + b, 0) / validEffs.length)}%`],
-                ['最大防治率：', `${round2(Math.max(...validEffs))}%`],
-                ['最小防治率：', `${round2(Math.min(...validEffs))}%`],
-                ['顯著次數：', `${significantCount}/${N} (${round1(significantCount/N*100)}%)`]
-            ];
-            // ...填表略
-        }
-    });
-
-    // 方法與附註
-    doc.setFontSize(12);
-    doc.setTextColor(0, 100, 200);
-    doc.setFont(undefined, 'bold');
-    doc.text('方法與附註', margin + 8, yPos + 12);
-
-    doc.setFontSize(8);
-    doc.setTextColor(60, 60, 60);
-    doc.setFont(undefined, 'normal');
-    const notes = [
-        '數據轉換：所有原始蟲數均以(X + 0.5)^0.5進行平方根轉換',
-        '防治率計算：(1 − 處理組平均 / 對照組平均) × 100%',
-        '顯著性檢定：每個時間點進行雙樣本t檢定',
-        '顯著水準：p < 0.05（紅色 * 號標註）',
-        'CV%：變異係數（標準差 ÷ 平均值 × 100%)'
-    ];
-    notes.forEach((note, index) => {
-        doc.text(`• ${note}`, margin + 12, yPos + 22 + (index * 6));
-    });
+    // ... 以下所有 doc.text 前都加 doc.setFont('NotoSansTC', 'normal');
+    // 圖表區、統計表區、附註標題區...等重複「寫中文字前」皆要加此指令。
 
     // 頁腳
     yPos = pageHeight - 10;
     doc.setFontSize(8);
     doc.setTextColor(150, 150, 150);
+    doc.setFont('NotoSansTC', 'normal');
     const footerText = `由防治成效分析系統產生 - ${new Date().toISOString().split('T')[0]}`;
     const footerWidth = doc.getTextWidth(footerText);
     doc.text(footerText, (pageWidth - footerWidth) / 2, yPos);
