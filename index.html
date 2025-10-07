@@ -84,14 +84,23 @@
     sup { color: var(--accent); font-weight: bold; font-size: 1em; }
   </style>
 
-  <!-- 外部 JS 依序載入（千萬不能插在 style 裡面） -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/simple-statistics@7.8.3/dist/simple-statistics.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script>
     if (window.jspdf && window.jspdf.jsPDF) window.jsPDF = window.jspdf.jsPDF;
   </script>
-  <script src="https://wlklw.github.io/control-rate/js/fonts/NotoSansTC.js"></script>
+  <!-- 強烈建議：將字型檔案命名為 NotoSansTC-normal.js，如下路徑，與 setFontNotoSansTC 實做相同 -->
+  <script src="js/fonts/NotoSansTC-normal.js"></script>
+  <script>
+    // 關鍵：舊站方式，給 jsPDF 增加 setFontNotoSansTC 輔助
+    if (typeof jsPDF !== "undefined") {
+      jsPDF.API.setFontNotoSansTC = function() {
+        this.setFont("NotoSansTC", "normal");
+        return this;
+      };
+    }
+  </script>
 
 </head>
 <body class="light-mode">
@@ -396,7 +405,7 @@ function downloadDemoCSV() {
         URL.revokeObjectURL(a.href);
     }
 
- function exportReport() {
+function exportReport() {
     const cache = window.__calcCache;
     if (!cache) {
         alert('請先計算再匯出報告。');
@@ -404,9 +413,8 @@ function downloadDemoCSV() {
     }
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF('p', 'mm', 'a4');
-
-    // 必須嵌入中文字型
-    doc.setFont('NotoSansTC', 'normal');
+    // 關鍵：設定自定中文字型
+    doc.setFontNotoSansTC();
 
     const { labels, stats } = cache;
     const names = getTreatmentNames();
@@ -421,39 +429,35 @@ function downloadDemoCSV() {
     const pageWidth = 210;
     const contentWidth = pageWidth - (2 * margin);
 
-    // 封面
+    // 封面標頭
+    doc.setFontSize(22);
+    doc.setTextColor(255, 255, 255); 
     doc.setFillColor(34, 139, 34);
     doc.rect(0, 0, pageWidth, 30, 'F');
-    doc.setFontSize(22);
-    doc.setTextColor(255, 255, 255);
-    doc.setFont('NotoSansTC', 'normal');
-    const titleText = '藥劑防治成效分析系統';
-    const titleWidth = doc.getTextWidth(titleText);
-    doc.text(titleText, (pageWidth - titleWidth) / 2, 20);
+    doc.text('藥劑防治成效分析系統', (pageWidth - doc.getTextWidth('藥劑防治成效分析系統'))/2, 20);
 
     yPos = 40;
     doc.setFontSize(16);
     doc.setTextColor(34, 139, 34);
-    doc.setFont('NotoSansTC', 'normal');
-    const subtitleText = '防治/藥效統計報表';
-    const subtitleWidth = doc.getTextWidth(subtitleText);
-    doc.text(subtitleText, (pageWidth - subtitleWidth) / 2, yPos);
+    doc.setFontNotoSansTC();
+    doc.text('防治/藥效統計報表', (pageWidth - doc.getTextWidth('防治/藥效統計報表'))/2, yPos);
 
     yPos += 8;
     doc.setDrawColor(34, 139, 34);
     doc.setLineWidth(1);
     const lineStart = (pageWidth - 120) / 2;
     doc.line(lineStart, yPos, lineStart + 120, yPos);
+
     yPos += 15;
     doc.setFontSize(10);
     doc.setTextColor(100, 100, 100);
-    doc.setFont('NotoSansTC', 'normal');
+    doc.setFontNotoSansTC();
     const dateText = `報告產生時間：${new Date().toLocaleString('zh-TW')}`;
     const dateWidth = doc.getTextWidth(dateText);
     doc.text(dateText, (pageWidth - dateWidth) / 2, yPos);
 
     yPos += 25;
-    // 實驗參數區塊
+    // 實驗參數區
     const paramBoxHeight = 40;
     doc.setFillColor(248, 249, 250);
     doc.setDrawColor(200, 200, 200);
@@ -461,11 +465,11 @@ function downloadDemoCSV() {
     doc.roundedRect(margin, yPos - 5, contentWidth, paramBoxHeight, 3, 3, 'FD');
     doc.setFontSize(14);
     doc.setTextColor(34, 139, 34);
-    doc.setFont('NotoSansTC', 'normal');
+    doc.setFontNotoSansTC();
     doc.text('實驗設計參數', margin + 10, yPos + 8);
-
     yPos += 18;
     doc.setFontSize(10);
+
     const params = [
         ['處理組數量：', `${T} 組`],
         ['重複次數：', `${R} 次／組`],
@@ -479,19 +483,19 @@ function downloadDemoCSV() {
         const xOffset = col * (cardWidth + 10);
         const yOffset = row * 10;
         doc.setTextColor(80, 80, 80);
-        doc.setFont('NotoSansTC', 'normal');
+        doc.setFontNotoSansTC();
         doc.text(key, margin + 15 + xOffset, yPos + yOffset);
         doc.setTextColor(0, 0, 0);
-        doc.setFont('NotoSansTC', 'normal');
+        doc.setFontNotoSansTC();
         doc.text(value, margin + 15 + xOffset + doc.getTextWidth(key + ' '), yPos + yOffset);
     });
 
     yPos += 25;
 
-    // 處理組
+    // 處理組資訊
     doc.setFontSize(14);
     doc.setTextColor(34, 139, 34);
-    doc.setFont('NotoSansTC', 'normal');
+    doc.setFontNotoSansTC();
     doc.text('試驗處理組', margin, yPos);
     yPos += 10;
 
@@ -510,12 +514,12 @@ function downloadDemoCSV() {
         doc.setFillColor(34, 139, 34);
         doc.roundedRect(margin + xOffset + 2, yPos + yOffset + 2, 12, 6, 1, 1, 'F');
         doc.setTextColor(255, 255, 255);
-        doc.setFont('NotoSansTC', 'normal');
         doc.setFontSize(8);
+        doc.setFontNotoSansTC();
         doc.text(`第${i + 1}組`, margin + xOffset + 4, yPos + yOffset + 6);
         doc.setTextColor(0, 0, 0);
-        doc.setFont('NotoSansTC', 'normal');
         doc.setFontSize(9);
+        doc.setFontNotoSansTC();
         let displayName = name;
         const maxNameWidth = groupCardWidth - 20;
         if (doc.getTextWidth(displayName) > maxNameWidth) {
@@ -526,20 +530,20 @@ function downloadDemoCSV() {
 
     yPos += Math.ceil(names.length / groupsPerRow) * 12 + 15;
 
-    // ... 以下所有 doc.text 前都加 doc.setFont('NotoSansTC', 'normal');
-    // 圖表區、統計表區、附註標題區...等重複「寫中文字前」皆要加此指令。
+    // ...你可續寫圖表或結果內容，遇到中文務必 doc.setFontNotoSansTC();
 
     // 頁腳
     yPos = pageHeight - 10;
     doc.setFontSize(8);
     doc.setTextColor(150, 150, 150);
-    doc.setFont('NotoSansTC', 'normal');
+    doc.setFontNotoSansTC();
     const footerText = `由防治成效分析系統產生 - ${new Date().toISOString().split('T')[0]}`;
     const footerWidth = doc.getTextWidth(footerText);
     doc.text(footerText, (pageWidth - footerWidth) / 2, yPos);
 
     doc.save('防治成效分析報表.pdf');
 }
+
 
     function exportCSV() {
         const cache = window.__calcCache;
