@@ -407,7 +407,6 @@ function downloadDemoCSV() {
     }
 
 function exportReport() {
-    // 必須 window.__calcCache 有統計結果、window.chart 對應你的 Chart.js 圖
     const cache = window.__calcCache;
     if (!cache) {
         alert('請先計算再匯出報告。');
@@ -427,80 +426,97 @@ function exportReport() {
     const margin = 15;
     const pageWidth = 210;
     const contentWidth = pageWidth - 2 * margin;
+    const dt = new Date();
 
-    // --- 封面設計 ---
+    // ========== 封面 ===========
     doc.setFillColor(28, 55, 85);
     doc.rect(0, 0, 210, 297, 'F');
+    doc.setFontNotoSansTC();
     doc.setTextColor(255,255,255);
-    doc.setFontSize(26);
-    doc.text('藥劑防治成效分析系統', pageWidth/2, 45, {align:'center'});
-    doc.setFontSize(16);
-    doc.text('多處理・重複・年度防治率計算報告', pageWidth/2, 60, {align:'center'});
-    doc.setDrawColor(46,204,113);
-    doc.setLineWidth(2);
-    doc.line(margin, 67, pageWidth-margin, 67);
-    doc.setFontSize(12);
-    doc.setTextColor(230,230,230);
-    const dt = new Date();
-    doc.text(`產出日期：${dt.toLocaleString('zh-TW')}`, pageWidth/2, 80, {align:'center'});
+    doc.setFontSize(30);
+    doc.text('藥劑防治成效分析系統', pageWidth/2, 55, {align:'center'});
+    doc.setFontSize(18);
+    doc.setTextColor(170,250,180);
+    doc.text('多處理・重複觀測・年度統計自動化', pageWidth/2, 73, {align:'center'});
+    doc.setDrawColor(101, 204, 171);
+    doc.setLineWidth(2.5);
+    doc.line(margin, 80, pageWidth-margin, 80);
+    doc.setFontSize(13);
+    doc.setTextColor(240,240,240);
+    doc.text(`報告產出時間：${dt.toLocaleString('zh-TW')}`, pageWidth/2, 93, {align:'center'});
 
-    doc.setFontNotoSansTC();
-    doc.setFontSize(13); doc.setTextColor(255,255,255);
-    doc.text('◆ 實驗設計參數', margin, 100);
-    doc.setFontSize(11); doc.setTextColor(220,220,220);
+    // 實驗參數區
+    doc.setFontSize(15); doc.setTextColor(190,230,255);
+    doc.text('【實驗設計參數】', margin, 110);
+    doc.setFontSize(12); doc.setTextColor(240,240,255);
     doc.text([
-        `處理組數量：${T} 組`,
-        `重複次數：${R} 次／組`,
-        `時間點數量：${N} 筆`,
-        `時間點前綴：${prefix || '（無）'}`,
-        '處理組名稱：' + names.join('、')
-    ].join('\n'), margin, 110);
+        `・處理組數量：${T} 組`,
+        `・重複次數：${R} 次／組`,
+        `・時間點數量：${N} 筆`,
+        `・時間點前綴：${prefix || '（無）'}`,
+        '・處理組名稱：' + names.join('、')
+    ].join('\n'), margin + 4, 119);
+    // 網站/製作者Logo
+    doc.setFontSize(10); doc.setTextColor(210,230,255);
+    doc.text('製作：防治成效分析網站（wlklw.github.io）', pageWidth-9, 295, {align:'right'});
 
-    // --- 新頁插入年度圖表 ---
-    doc.addPage();
-doc.setFontNotoSansTC();
-doc.setFontSize(16); 
-doc.setTextColor(23,85,44);
-doc.text('年度防治率動態圖', pageWidth/2, 20, {align:'center'});
-    // 圖設自動留白不壓表格內容
-   const canvas = document.getElementById('chartCanvas');
-if (canvas && canvas.toDataURL) {
-    try {
-        const imgData = canvas.toDataURL('image/png', 1.0);
-        const chartWidth = contentWidth;
-        const chartHeight = 70;
-        doc.addImage(imgData, 'PNG', margin, 28, chartWidth, chartHeight);
-        doc.setDrawColor(194, 222, 203);
-        doc.rect(margin-2, 26, chartWidth+4, chartHeight+4);
-    } catch (e) {
-        doc.setFontSize(10); doc.setTextColor(200,15,15);
-        doc.text('（圖表擷取失敗）', pageWidth/2, 65, {align:'center'});
-    }
-} else {
-    doc.setFontSize(10); doc.setTextColor(200,15,15);
-    doc.text('（尚未計算圖表）', pageWidth/2, 65, {align:'center'});
-}
-doc.setFontSize(10);
-doc.setTextColor(127,127,127);
-doc.text('註：以 Chart.js 動態統計生成。', margin, 105);
-
-    // --- 新頁插入結果表，美觀主表格 ---
+    // ========== 圖表頁 ===========
     doc.addPage();
     doc.setFontNotoSansTC();
-    doc.setFontSize(15); doc.setTextColor(25, 65, 116);
-    doc.text('年度各時間點防治率統計表', pageWidth/2, 20, {align:'center'});
-    doc.setFontSize(9); doc.setTextColor(60,60,60);
+    doc.setFontSize(19); doc.setTextColor(19, 98, 70);
+    doc.text('年度防治率動態圖', pageWidth/2, 23, {align:'center'});
 
-    // 組表格欄位與資料
+    const canvas = document.getElementById('chartCanvas');
+    let chartSummary = '';
+    if (canvas && canvas.toDataURL) {
+        try {
+            const imgData = canvas.toDataURL('image/png', 1.0);
+            const chartWidth = contentWidth, chartHeight = 70;
+            doc.addImage(imgData, 'PNG', margin, 32, chartWidth, chartHeight);
+            doc.setDrawColor(194, 222, 203);
+            doc.rect(margin-2, 30, chartWidth+4, chartHeight+4);
+
+            // 自動產生圖表小結
+            let maxEff = -999, maxEffTp = '';
+            names.forEach((name, t) => {
+                for (let i=0; i<N; i++) {
+                    const v = stats.eff[t][i];
+                    if (typeof v === "number" && v > maxEff) {
+                        maxEff = v; maxEffTp = labels[i]+"（"+name+"）";
+                    }
+                }
+            });
+            chartSummary = `全年觀測最高防治率：${maxEff}%（${maxEffTp}）`;
+        } catch (e) {
+            chartSummary = '（圖表擷取失敗）';
+        }
+    } else {
+        chartSummary = '（尚未計算圖表）';
+    }
+    doc.setFontSize(11);
+    doc.setTextColor(110,130,140);
+    doc.text('註：以 Chart.js 動態統計生成。', margin, 110);
+    doc.setFontSize(13); doc.setTextColor(60,120,100);
+    doc.text(chartSummary, pageWidth/2, 113, {align:'center'});
+
+    // ========== 統計表頁 ===========
+    doc.addPage();
+    doc.setFontNotoSansTC();
+    doc.setFontSize(17); doc.setTextColor(70, 90, 160);
+    doc.text('年度各時間點防治率統計表', pageWidth/2, 20, {align:'center'});
+    doc.setFontSize(12); doc.setTextColor(65,140,120);
+    doc.text('防治率（%）＝ (1 − 處理組均值 / 對照組均值) × 100　（* 代表顯著）', pageWidth/2, 28, {align:'center'});
+
+    // 表格資料組裝
     let columns = [
         {header:'時間點', dataKey: 'tp'},
         {header:'對照平均', dataKey: 'ctrlAvg'},
         {header:'標準差', dataKey: 'ctrlSd'},
-        {header:'變異係數(%)', dataKey: 'ctrlCv'}
+        {header:'變異(%)', dataKey: 'ctrlCv'}
     ];
     for(let t=0; t<names.length; t++) {
         columns.push({header: names[t]+' 防治率(%)', dataKey: `eff${t}`});
-        columns.push({header: names[t]+' 變異係數(%)', dataKey: `cv${t}`});
+        columns.push({header: names[t]+' 變異(%)', dataKey: `cv${t}`});
     }
     const rows = [];
     for(let i=0; i<N; i++) {
@@ -512,7 +528,6 @@ doc.text('註：以 Chart.js 動態統計生成。', margin, 105);
         };
         for(let t=0; t<names.length; t++) {
             let eff = stats.eff[t][i] === null ? '—' : stats.eff[t][i];
-            // 顯著性標記
             if(stats.isSignificant && stats.isSignificant[t][i]) eff = eff+'*';
             row[`eff${t}`] = eff;
             let cv = isFinite(stats.trCv[t][i]) ? Math.round(stats.trCv[t][i]*10)/10 : '—';
@@ -520,16 +535,15 @@ doc.text('註：以 Chart.js 動態統計生成。', margin, 105);
         }
         rows.push(row);
     }
-
     doc.autoTable({
-        startY: 28,
+        startY: 35,
         margin: {left: margin, right: margin},
         columns: columns,
         body: rows,
         styles: {
-            textColor: [24,24,24],
+            textColor: [15,15,32],
             font: "NotoSansTC",
-            fontSize: 9,
+            fontSize: 10,
             halign: 'center',
             valign: 'middle',
         },
@@ -540,26 +554,28 @@ doc.text('註：以 Chart.js 動態統計生成。', margin, 105);
         },
         bodyStyles: {
             font: "NotoSansTC",
-            textColor: [40,40,40],
+            textColor: [40,40,50],
             halign: 'center',
         },
         alternateRowStyles: {
-            fillColor: [230,238,250],
+            fillColor: [232, 244, 255],
+        },
+        didDrawPage: function(data) {
+            if(data.pageNumber === 1) {
+                doc.setFontSize(15);
+            }
         }
     });
 
-    // 頁尾 (所有頁)
+    // ========== 頁尾 ==========
     const pageCount = doc.internal.getNumberOfPages();
     for (let i = 1; i <= pageCount; i++) {
         doc.setPage(i);
-        doc.setFontSize(8);
-        doc.setTextColor(140, 160, 170);
+        doc.setFontSize(8); doc.setTextColor(140, 160, 170);
         doc.setFontNotoSansTC();
-        const footerText = `由防治成效分析系統產生　${new Date().toLocaleString('zh-TW')} 　頁碼 ${i}/${pageCount}`;
-        const pageWidth = doc.internal.pageSize.getWidth();
+        const footerText = `由防治成效分析系統產生　${dt.toLocaleString('zh-TW')}　頁碼 ${i}/${pageCount}`;
         doc.text(footerText, pageWidth/2, 291, {align:'center'});
     }
-
     doc.save(`防治成效分析報告_${dt.toISOString().split('T')[0]}.pdf`);
 }
 
