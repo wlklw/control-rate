@@ -437,7 +437,6 @@ function exportReport() {
     doc.text('藥劑防治成效分析系統', pageWidth/2, 55, {align:'center'});
     doc.setFontSize(18);
     doc.setTextColor(170,250,180);
-    doc.text('多處理・重複觀測・年度統計自動化', pageWidth/2, 73, {align:'center'});
     doc.setDrawColor(101, 204, 171);
     doc.setLineWidth(2.5);
     doc.line(margin, 80, pageWidth-margin, 80);
@@ -495,7 +494,6 @@ function exportReport() {
     }
     doc.setFontSize(11);
     doc.setTextColor(110,130,140);
-    doc.text('註：以 Chart.js 動態統計生成。', margin, 110);
     doc.setFontSize(13); doc.setTextColor(60,120,100);
     doc.text(chartSummary, pageWidth/2, 113, {align:'center'});
 
