@@ -458,29 +458,31 @@ function exportReport() {
 
     // --- 新頁插入年度圖表 ---
     doc.addPage();
-    doc.setFontNotoSansTC();
-    doc.setFontSize(16); doc.setTextColor(23,85,44);
-    doc.text('年度防治率動態圖', pageWidth/2, 20, {align:'center'});
+doc.setFontNotoSansTC();
+doc.setFontSize(16); 
+doc.setTextColor(23,85,44);
+doc.text('年度防治率動態圖', pageWidth/2, 20, {align:'center'});
     // 圖設自動留白不壓表格內容
-    if (window.chart) {
-        try {
-            const imgData = chart.toBase64Image();
-            const chartWidth = contentWidth;
-            const chartHeight = 70;
-            doc.addImage(imgData, 'PNG', margin, 28, chartWidth, chartHeight);
-            doc.setDrawColor(194, 222, 203);
-            doc.rect(margin-2, 26, chartWidth+4, chartHeight+4);
-        } catch (e) {
-            doc.setFontSize(10); doc.setTextColor(200,15,15);
-            doc.text('（圖表擷取失敗）', pageWidth/2, 65, {align:'center'});
-        }
-    } else {
+   const canvas = document.getElementById('chartCanvas');
+if (canvas && canvas.toDataURL) {
+    try {
+        const imgData = canvas.toDataURL('image/png', 1.0);
+        const chartWidth = contentWidth;
+        const chartHeight = 70;
+        doc.addImage(imgData, 'PNG', margin, 28, chartWidth, chartHeight);
+        doc.setDrawColor(194, 222, 203);
+        doc.rect(margin-2, 26, chartWidth+4, chartHeight+4);
+    } catch (e) {
         doc.setFontSize(10); doc.setTextColor(200,15,15);
-        doc.text('（尚未計算圖表）', pageWidth/2, 65, {align:'center'});
+        doc.text('（圖表擷取失敗）', pageWidth/2, 65, {align:'center'});
     }
-    doc.setFontSize(10);
-    doc.setTextColor(127,127,127);
-    doc.text('註：以 Chart.js 動態統計生成。', margin, 105);
+} else {
+    doc.setFontSize(10); doc.setTextColor(200,15,15);
+    doc.text('（尚未計算圖表）', pageWidth/2, 65, {align:'center'});
+}
+doc.setFontSize(10);
+doc.setTextColor(127,127,127);
+doc.text('註：以 Chart.js 動態統計生成。', margin, 105);
 
     // --- 新頁插入結果表，美觀主表格 ---
     doc.addPage();
